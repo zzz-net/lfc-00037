@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Ticket, TicketFilters, TimelineEvent, TicketStatus } from '../../shared/types';
+import type { Ticket, TicketFilters, TimelineEvent, TicketStatus, EscalationRecord } from '../../shared/types';
 import {
   getTickets as apiGetTickets,
   getTicketDetail as apiGetTicketDetail,
@@ -7,6 +7,7 @@ import {
   assignTicket as apiAssignTicket,
   updateTicketStatus as apiUpdateTicketStatus,
   addTicketNote as apiAddTicketNote,
+  deEscalateTicket as apiDeEscalateTicket,
 } from '../utils/api';
 
 interface TicketState {
@@ -14,6 +15,7 @@ interface TicketState {
   total: number;
   currentTicket: Ticket | null;
   timeline: TimelineEvent[];
+  escalationRecords: EscalationRecord[];
   filters: TicketFilters;
   isLoading: boolean;
   error: string | null;
@@ -33,6 +35,7 @@ interface TicketState {
     reopenReason?: string
   ) => Promise<void>;
   addNote: (id: string, note: string) => Promise<void>;
+  revokeEscalation: (id: string, reason: string) => Promise<void>;
   setFilters: (filters: TicketFilters) => void;
   clearError: () => void;
 }
@@ -53,6 +56,7 @@ export const useTicketStore = create<TicketState>((set, get) => ({
   total: 0,
   currentTicket: null,
   timeline: [],
+  escalationRecords: [],
   filters: loadSavedFilters(),
   isLoading: false,
   error: null,
@@ -79,6 +83,7 @@ export const useTicketStore = create<TicketState>((set, get) => ({
       set({
         currentTicket: result.ticket,
         timeline: result.timeline,
+        escalationRecords: (result as any).escalationRecords || [],
         isLoading: false,
       });
     } catch (err) {
@@ -146,6 +151,26 @@ export const useTicketStore = create<TicketState>((set, get) => ({
     } catch (err) {
       set({
         error: err instanceof Error ? err.message : '添加备注失败',
+        isLoading: false,
+      });
+      throw err;
+    }
+  },
+
+  revokeEscalation: async (id, reason) => {
+    set({ isLoading: true, error: null });
+    try {
+      const result = await apiDeEscalateTicket(id, reason);
+      set({
+        currentTicket: result.ticket,
+        timeline: result.timeline,
+        escalationRecords: (result as any).escalationRecords || get().escalationRecords,
+        isLoading: false,
+      });
+      await get().fetchTickets();
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : '撤销催办失败',
         isLoading: false,
       });
       throw err;

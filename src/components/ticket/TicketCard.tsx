@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
-import { MapPin, User, Clock, AlertCircle } from 'lucide-react';
+import { MapPin, User, Clock, AlertCircle, Megaphone } from 'lucide-react';
 import type { Ticket } from '../../../shared/types';
-import { getStatusBadgeClass, getStatusLabel, timeAgo } from '../../utils/helpers';
+import { getStatusBadgeClass, getStatusLabel, timeAgo, getEscalationBadgeClass, formatDateTime } from '../../utils/helpers';
 
 interface TicketCardProps {
   ticket: Ticket;
@@ -13,11 +13,21 @@ export default function TicketCard({ ticket }: TicketCardProps) {
   return (
     <div
       onClick={() => navigate(`/tickets/${ticket.id}`)}
-      className="card p-4 cursor-pointer hover:shadow-md hover:border-blue-300 transition-all duration-200 group"
+      className={`card p-4 cursor-pointer hover:shadow-md hover:border-blue-300 transition-all duration-200 group relative ${
+        ticket.isEscalated ? 'ring-2 ring-rose-300 border-rose-300 bg-rose-50/20' : ''
+      }`}
     >
+      {ticket.isEscalated && (
+        <div className="absolute -top-2 -right-2 z-10">
+          <span className={`badge ${getEscalationBadgeClass()} shadow-sm flex items-center gap-1`} title={ticket.escalationReason}>
+            <Megaphone className="w-3 h-3" />
+            催办中
+          </span>
+        </div>
+      )}
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
             <span className={`badge ${getStatusBadgeClass(ticket.status)}`}>
               {getStatusLabel(ticket.status)}
             </span>
@@ -28,6 +38,11 @@ export default function TicketCard({ ticket }: TicketCardProps) {
               >
                 <AlertCircle className="w-3 h-3" />
                 {ticket.priority.name}
+              </span>
+            )}
+            {ticket.isEscalated && ticket.escalatedAt && (
+              <span className="text-[10px] text-rose-600 font-medium">
+                催办时间：{formatDateTime(ticket.escalatedAt)}
               </span>
             )}
           </div>
@@ -45,7 +60,12 @@ export default function TicketCard({ ticket }: TicketCardProps) {
           <MapPin className="w-3.5 h-3.5" />
           <span className="truncate max-w-[120px]">{ticket.location}</span>
         </div>
-        {ticket.assignee ? (
+        {ticket.isEscalated && ticket.escalationOwner ? (
+          <div className="flex items-center gap-1 text-rose-600 font-medium">
+            <User className="w-3.5 h-3.5" />
+            <span>督办：{ticket.escalationOwner.name}</span>
+          </div>
+        ) : ticket.assignee ? (
           <div className="flex items-center gap-1">
             <User className="w-3.5 h-3.5" />
             <span>{ticket.assignee.name}</span>

@@ -1,6 +1,6 @@
 export type UserRole = 'reader' | 'technician' | 'admin';
 export type TicketStatus = 'pending' | 'processing' | 'waiting_parts' | 'paused' | 'completed' | 'reopened';
-export type TimelineEventType = 'created' | 'assigned' | 'status_changed' | 'note_added' | 'reopened';
+export type TimelineEventType = 'created' | 'assigned' | 'status_changed' | 'note_added' | 'reopened' | 'escalated' | 'de_escalated';
 
 export interface User {
   id: string;
@@ -40,6 +40,8 @@ export interface Priority {
   name: string;
   color: string;
   sort: number;
+  responseTimeMinutes?: number;
+  escalationOwnerId?: string;
 }
 
 export interface Ticket {
@@ -59,6 +61,11 @@ export interface Ticket {
   createdAt: string;
   updatedAt: string;
   closedAt?: string;
+  isEscalated?: boolean;
+  escalatedAt?: string;
+  escalationReason?: string;
+  escalationOwnerId?: string;
+  escalationOwner?: PublicUser;
 }
 
 export interface TimelineEvent {
@@ -71,6 +78,19 @@ export interface TimelineEvent {
   createdAt: string;
 }
 
+export interface EscalationRecord {
+  id: string;
+  ticketId: string;
+  priorityId: string;
+  escalatedAt: string;
+  escalationReason: string;
+  escalationOwnerId: string;
+  originalAssigneeId?: string;
+  deEscalatedAt?: string;
+  deEscalatedBy?: string;
+  deEscalationReason?: string;
+}
+
 export interface Database {
   users: User[];
   assetGroups: AssetGroup[];
@@ -78,6 +98,7 @@ export interface Database {
   priorities: Priority[];
   tickets: Ticket[];
   timelineEvents: TimelineEvent[];
+  escalationRecords: EscalationRecord[];
 }
 
 export interface TicketFilters {
@@ -88,6 +109,7 @@ export interface TicketFilters {
   status?: TicketStatus;
   groupId?: string;
   search?: string;
+  isEscalated?: 'yes' | 'no' | '';
 }
 
 export const STATUS_LABELS: Record<TicketStatus, string> = {

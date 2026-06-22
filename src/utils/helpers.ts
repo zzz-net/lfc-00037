@@ -34,6 +34,8 @@ export function getTimelineEventLabel(type: TimelineEventType): string {
     status_changed: '状态变更',
     note_added: '添加备注',
     reopened: '重新打开',
+    escalated: '催办升级',
+    de_escalated: '撤销催办',
   };
   return labels[type] || type;
 }
@@ -45,6 +47,8 @@ export function getTimelineEventIconType(type: TimelineEventType): string {
     status_changed: 'refresh-cw',
     note_added: 'message-square',
     reopened: 'rotate-ccw',
+    escalated: 'megaphone',
+    de_escalated: 'undo-2',
   };
   return icons[type] || 'circle';
 }
@@ -65,4 +69,17 @@ export function timeAgo(isoString: string): string {
 
 export function copyToClipboard(text: string): void {
   navigator.clipboard.writeText(text).catch(() => {});
+}
+
+export function getEscalationBadgeClass(): string {
+  return 'bg-rose-100 text-rose-700 border border-rose-200';
+}
+
+export function formatMinutes(minutes: number | undefined | null): string {
+  if (minutes === undefined || minutes === null || minutes <= 0) return '不限时';
+  if (minutes < 60) return `${minutes} 分钟`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (m === 0) return `${h} 小时`;
+  return `${h} 小时 ${m} 分钟`;
 }

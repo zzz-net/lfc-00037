@@ -10,11 +10,18 @@ import {
   getTechnicians as apiGetTechnicians,
 } from '../utils/api';
 
+interface EscalationCandidate {
+  id: string;
+  name: string;
+  role: string;
+}
+
 interface ConfigState {
   assets: Asset[];
   assetGroups: AssetGroup[];
   priorities: Priority[];
   technicians: PublicUser[];
+  escalationCandidates: EscalationCandidate[];
   isLoading: boolean;
   error: string | null;
   fetchAssets: () => Promise<void>;
@@ -32,6 +39,7 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
   assetGroups: [],
   priorities: [],
   technicians: [],
+  escalationCandidates: [],
   isLoading: false,
   error: null,
 
@@ -52,7 +60,11 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const result = await apiGetPriorities();
-      set({ priorities: result.priorities, isLoading: false });
+      set({
+        priorities: result.priorities,
+        escalationCandidates: (result as any).escalationCandidates || [],
+        isLoading: false,
+      });
     } catch (err) {
       set({
         error: err instanceof Error ? err.message : '获取优先级失败',

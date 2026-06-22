@@ -11,6 +11,7 @@ import type {
   TimelineEvent,
   PublicUser,
   TicketStatus,
+  EscalationRecord,
 } from '../../shared/types.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -158,13 +159,14 @@ function getInitialDatabase(): Database {
       },
     ],
     priorities: [
-      { id: 'pri_low', name: '低', color: '#6b7280', sort: 1 },
-      { id: 'pri_medium', name: '中', color: '#3b82f6', sort: 2 },
-      { id: 'pri_high', name: '高', color: '#f97316', sort: 3 },
-      { id: 'pri_urgent', name: '紧急', color: '#ef4444', sort: 4 },
+      { id: 'pri_low', name: '低', color: '#6b7280', sort: 1, responseTimeMinutes: 48 * 60, escalationOwnerId: 'user_admin' },
+      { id: 'pri_medium', name: '中', color: '#3b82f6', sort: 2, responseTimeMinutes: 8 * 60, escalationOwnerId: 'user_admin' },
+      { id: 'pri_high', name: '高', color: '#f97316', sort: 3, responseTimeMinutes: 2 * 60, escalationOwnerId: 'user_admin' },
+      { id: 'pri_urgent', name: '紧急', color: '#ef4444', sort: 4, responseTimeMinutes: 15, escalationOwnerId: 'user_admin' },
     ],
     tickets: [],
     timelineEvents: [],
+    escalationRecords: [],
   };
 }
 
@@ -173,6 +175,20 @@ const VALID_STATUSES: TicketStatus[] = ['pending', 'processing', 'waiting_parts'
 function validateDatabase(db: Database): { fixed: number; warnings: string[] } {
   let fixed = 0;
   const warnings: string[] = [];
+
+  if (!db.escalationRecords) {
+    db.escalationRecords = [];
+    warnings.push('数据库缺少 escalationRecords 表，已初始化空数组');
+    fixed++;
+  }
+
+  for (const p of db.priorities) {
+    if (p.responseTimeMinutes === undefined || p.responseTimeMinutes === null) {
+      p.responseTimeMinutes = 0;
+      warnings.push(`优先级 ${p.id} 缺少响应时限，已默认设为 0（不限时）`);
+      fixed++;
+    }
+  }
 
   for (const ticket of db.tickets) {
     if (!VALID_STATUSES.includes(ticket.status)) {
@@ -197,6 +213,27 @@ function validateDatabase(db: Database): { fixed: number; warnings: string[] } {
       ticket.reopenReason = '（系统重建：原重新打开原因丢失）';
       warnings.push(`工单 ${ticket.id} 重新打开但缺少原因，已填充默认文本`);
       fixed++;
+    }
+
+    if (ticket.status === 'completed' && ticket.isEscalated) {
+      ticket.isEscalated = false;
+      ticket.escalatedAt = undefined;
+      ticket.escalationReason = undefined;
+      ticket.escalationOwnerId = undefined;
+      warnings.push(`工单 ${ticket.id} 已完成但仍带催办标记，已清除`);
+      fixed++;
+    }
+
+    if (ticket.isEscalated && !ticket.escalatedAt) {
+      ticket.isEscalated = false;
+      ticket.escalationReason = undefined;
+      ticket.escalationOwnerId = undefined;
+      warnings.push(`工单 ${ticket.id} 催办标记异常缺少时间，已复位`);
+      fixed++;
+    }
+
+    if (ticket.escalationOwnerId && !db.users.find((u) => u.id === ticket.escalationOwnerId)) {
+      warnings.push(`工单 ${ticket.id} 引用的升级负责人 ${ticket.escalationOwnerId} 不存在`);
     }
 
     if (!db.assets.find((a) => a.id === ticket.assetId)) {
@@ -225,6 +262,21 @@ function validateDatabase(db: Database): { fixed: number; warnings: string[] } {
     }
     if (!db.users.find((u) => u.id === event.userId)) {
       warnings.push(`时间线事件 ${event.id} 引用的用户 ${event.userId} 不存在`);
+    }
+  }
+
+  for (const rec of db.escalationRecords) {
+    if (!ticketIds.has(rec.ticketId)) {
+      warnings.push(`催办记录 ${rec.id} 引用的工单 ${rec.ticketId} 不存在`);
+    }
+    if (!db.priorities.find((p) => p.id === rec.priorityId)) {
+      warnings.push(`催办记录 ${rec.id} 引用的优先级 ${rec.priorityId} 不存在`);
+    }
+    if (!db.users.find((u) => u.id === rec.escalationOwnerId)) {
+      warnings.push(`催办记录 ${rec.id} 引用的升级负责人 ${rec.escalationOwnerId} 不存在`);
+    }
+    if (rec.deEscalatedBy && !db.users.find((u) => u.id === rec.deEscalatedBy)) {
+      warnings.push(`催办记录 ${rec.id} 引用的撤销人 ${rec.deEscalatedBy} 不存在`);
     }
   }
 
@@ -352,12 +404,16 @@ function enrichTicket(ticket: Ticket): Ticket {
   const priority = db.priorities.find((p) => p.id === ticket.priorityId);
   const submitter = db.users.find((u) => u.id === ticket.submitterId);
   const assignee = ticket.assigneeId ? db.users.find((u) => u.id === ticket.assigneeId) : undefined;
+  const escalationOwner = ticket.escalationOwnerId
+    ? db.users.find((u) => u.id === ticket.escalationOwnerId)
+    : undefined;
   return {
     ...ticket,
     asset,
     priority,
     submitter: submitter ? toPublicUser(submitter) : undefined,
     assignee: assignee ? toPublicUser(assignee) : undefined,
+    escalationOwner: escalationOwner ? toPublicUser(escalationOwner) : undefined,
   };
 }
 
@@ -393,10 +449,22 @@ export function createTicket(
 export function updateTicket(id: string, updates: Partial<Ticket>): Ticket | undefined {
   const index = db.tickets.findIndex((t) => t.id === id);
   if (index !== -1) {
+    const finalUpdates: Partial<Ticket> = { ...updates, updatedAt: new Date().toISOString() };
+    if (finalUpdates.status === 'completed') {
+      finalUpdates.isEscalated = false;
+      finalUpdates.escalatedAt = undefined;
+      finalUpdates.escalationReason = undefined;
+      finalUpdates.escalationOwnerId = undefined;
+    }
+    if (finalUpdates.status === 'reopened') {
+      finalUpdates.isEscalated = false;
+      finalUpdates.escalatedAt = undefined;
+      finalUpdates.escalationReason = undefined;
+      finalUpdates.escalationOwnerId = undefined;
+    }
     db.tickets[index] = {
       ...db.tickets[index],
-      ...updates,
-      updatedAt: new Date().toISOString(),
+      ...finalUpdates,
     };
     saveDatabase(db);
     return enrichTicket(db.tickets[index]);
@@ -427,6 +495,128 @@ export function addTimelineEvent(
   };
   db.timelineEvents.push(event);
   return event;
+}
+
+export function getEscalationRecordsByTicket(ticketId: string): EscalationRecord[] {
+  return db.escalationRecords.filter((r) => r.ticketId === ticketId);
+}
+
+export function checkAndTriggerEscalation(ticketId: string): { triggered: boolean; reason?: string } {
+  const ticket = db.tickets.find((t) => t.id === ticketId);
+  if (!ticket) return { triggered: false, reason: '工单不存在' };
+  if (ticket.status === 'completed') return { triggered: false, reason: '已完成工单不触发催办' };
+  if (ticket.isEscalated) return { triggered: false, reason: '已处于催办状态' };
+
+  const priority = db.priorities.find((p) => p.id === ticket.priorityId);
+  if (!priority || !priority.responseTimeMinutes || priority.responseTimeMinutes <= 0) {
+    return { triggered: false, reason: '优先级未配置时限或不限时' };
+  }
+
+  const created = new Date(ticket.createdAt).getTime();
+  const now = Date.now();
+  const elapsedMinutes = (now - created) / 60000;
+  if (elapsedMinutes < priority.responseTimeMinutes) {
+    return { triggered: false, reason: `未超时，已过 ${Math.floor(elapsedMinutes)} 分钟，时限 ${priority.responseTimeMinutes} 分钟` };
+  }
+
+  const escalationOwnerId = priority.escalationOwnerId || 'user_admin';
+  const owner = db.users.find((u) => u.id === escalationOwnerId);
+  const ownerName = owner ? owner.name : '管理员';
+  const originalAssigneeId = ticket.assigneeId;
+
+  ticket.isEscalated = true;
+  ticket.escalatedAt = new Date().toISOString();
+  ticket.escalationOwnerId = escalationOwnerId;
+  ticket.escalationReason = `优先级「${priority.name}」响应时限为 ${priority.responseTimeMinutes} 分钟，工单创建 ${Math.floor(elapsedMinutes)} 分钟仍未处理完成，自动升级由 ${ownerName} 督办`;
+  ticket.updatedAt = ticket.escalatedAt;
+
+  const record: EscalationRecord = {
+    id: generateId(),
+    ticketId: ticket.id,
+    priorityId: priority.id,
+    escalatedAt: ticket.escalatedAt,
+    escalationReason: ticket.escalationReason,
+    escalationOwnerId,
+    originalAssigneeId,
+  };
+  db.escalationRecords.push(record);
+
+  const duplicateType = 'escalated';
+  const recentSameType = db.timelineEvents
+    .filter((e) => e.ticketId === ticket.id && e.type === duplicateType)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  if (recentSameType.length === 0 || new Date(recentSameType[0].createdAt).getTime() < now - 1000) {
+    db.timelineEvents.push({
+      id: generateId(),
+      ticketId: ticket.id,
+      type: 'escalated',
+      userId: escalationOwnerId,
+      content: ticket.escalationReason,
+      createdAt: ticket.escalatedAt,
+    });
+  }
+
+  saveDatabase(db);
+  return { triggered: true };
+}
+
+export function checkAllEscalations(): number {
+  let count = 0;
+  const openTickets = db.tickets.filter((t) => t.status !== 'completed' && !t.isEscalated);
+  for (const t of openTickets) {
+    const result = checkAndTriggerEscalation(t.id);
+    if (result.triggered) count++;
+  }
+  return count;
+}
+
+export function deEscalateTicket(
+  ticketId: string,
+  operatorId: string,
+  reason: string
+): { success: boolean; ticket?: Ticket; error?: string } {
+  const index = db.tickets.findIndex((t) => t.id === ticketId);
+  if (index === -1) return { success: false, error: '工单不存在' };
+  const ticket = db.tickets[index];
+  if (!ticket.isEscalated) return { success: false, error: '工单当前未处于催办状态' };
+
+  const escalatedAt = ticket.escalatedAt!;
+  const escalationOwnerId = ticket.escalationOwnerId!;
+  const escalationReason = ticket.escalationReason!;
+
+  ticket.isEscalated = false;
+  ticket.escalatedAt = undefined;
+  ticket.escalationReason = undefined;
+  ticket.escalationOwnerId = undefined;
+  ticket.updatedAt = new Date().toISOString();
+
+  const openRecord = db.escalationRecords.find(
+    (r) =>
+      r.ticketId === ticketId &&
+      r.escalatedAt === escalatedAt &&
+      r.escalationOwnerId === escalationOwnerId &&
+      !r.deEscalatedAt
+  );
+  if (openRecord) {
+    openRecord.deEscalatedAt = ticket.updatedAt;
+    openRecord.deEscalatedBy = operatorId;
+    openRecord.deEscalationReason = reason;
+  }
+
+  const operator = db.users.find((u) => u.id === operatorId);
+  const operatorName = operator ? operator.name : '管理员';
+  const content = `管理员 ${operatorName} 撤销本次催办，原因：${reason}（原升级原因：${escalationReason}）`;
+  db.timelineEvents.push({
+    id: generateId(),
+    ticketId: ticket.id,
+    type: 'de_escalated',
+    userId: operatorId,
+    content,
+    createdAt: ticket.updatedAt,
+  });
+
+  saveDatabase(db);
+  return { success: true, ticket: enrichTicket(ticket) };
 }
 
 export function persist(): void {

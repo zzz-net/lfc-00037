@@ -10,6 +10,9 @@ import {
   getAssets,
   getPriorities,
   persist,
+  checkAllEscalations,
+  deEscalateTicket,
+  getEscalationRecordsByTicket,
 } from '../data/store.js';
 import { authMiddleware, requireRoles, type AuthRequest } from '../middleware/auth.js';
 import { STATUS_TRANSITIONS, STATUS_LABELS } from '../../shared/types.js';
@@ -20,7 +23,8 @@ const router = Router();
 router.use(authMiddleware);
 
 router.get('/', (req: AuthRequest, res: Response): void => {
-  const { assetId, location, priorityId, assigneeId, status, groupId, search } = req.query;
+  checkAllEscalations();
+  const { assetId, location, priorityId, assigneeId, status, groupId, search, isEscalated } = req.query;
   let tickets = getTickets();
 
   const user = req.user!;
@@ -61,13 +65,24 @@ router.get('/', (req: AuthRequest, res: Response): void => {
         t.asset?.code.toLowerCase().includes(s)
     );
   }
+  if (isEscalated === 'yes') {
+    tickets = tickets.filter((t) => t.isEscalated);
+  } else if (isEscalated === 'no') {
+    tickets = tickets.filter((t) => !t.isEscalated);
+  }
 
-  tickets.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  tickets.sort((a, b) => {
+    const aEsc = a.isEscalated ? 1 : 0;
+    const bEsc = b.isEscalated ? 1 : 0;
+    if (aEsc !== bEsc) return bEsc - aEsc;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
 
   res.json({ success: true, data: { tickets, total: tickets.length } });
 });
 
 router.get('/:id', (req: AuthRequest, res: Response): void => {
+  checkAllEscalations();
   const ticket = getTicketById(req.params.id);
   if (!ticket) {
     res.status(404).json({ success: false, error: '工单不存在' });
@@ -79,7 +94,8 @@ router.get('/:id', (req: AuthRequest, res: Response): void => {
     return;
   }
   const timeline = getTimelineEvents(ticket.id);
-  res.json({ success: true, data: { ticket, timeline } });
+  const escalationRecords = getEscalationRecordsByTicket(ticket.id);
+  res.json({ success: true, data: { ticket, timeline, escalationRecords } });
 });
 
 router.post('/', (req: AuthRequest, res: Response): void => {
@@ -120,59 +136,59 @@ router.post('/', (req: AuthRequest, res: Response): void => {
   res.status(201).json({ success: true, data: { ticket } });
 });
 
-router.post('/:id/assign', requireRoles('admin', 'technician'), (req: AuthRequest, res: Response): void => {
+router.post('/:id/note', (req: AuthRequest, res: Response): void => {
   const ticket = getTicketById(req.params.id);
   if (!ticket) {
     res.status(404).json({ success: false, error: '工单不存在' });
     return;
   }
-
   if (ticket.status === 'completed') {
     res.status(400).json({
       success: false,
-      error: '已完成的工单不能直接派工，请先由管理员重新打开并填写原因后再派工',
+      error: '已完成的工单不能添加备注，请先由管理员重新打开后再操作',
     });
     return;
   }
-
-  if (ticket.status !== 'pending' && ticket.status !== 'reopened') {
-    res.status(400).json({
-      success: false,
-      error: `当前状态「${STATUS_LABELS[ticket.status]}」不允许派工，只有待派工或重新打开的工单可以派工`,
-    });
+  const { note } = req.body;
+  if (!note || !note.trim()) {
+    res.status(400).json({ success: false, error: '备注内容不能为空' });
     return;
   }
-
-  const { assigneeId, note } = req.body;
-  if (!assigneeId) {
-    res.status(400).json({ success: false, error: '请选择处理人' });
-    return;
-  }
-  const assignee = findUserById(assigneeId);
-  if (!assignee || (assignee.role !== 'technician' && assignee.role !== 'admin')) {
-    res.status(400).json({ success: false, error: '处理人必须是技术员或管理员' });
-    return;
-  }
-
   const user = req.user!;
-  const updated = updateTicket(ticket.id, { assigneeId, status: 'processing' });
   addTimelineEvent({
     ticketId: ticket.id,
-    type: 'assigned',
+    type: 'note_added',
     userId: user.id,
-    content: `将工单派给 ${assignee.name}${note ? `：${note}` : ''}`,
-  });
-  addTimelineEvent({
-    ticketId: ticket.id,
-    type: 'status_changed',
-    userId: user.id,
-    content: `状态从 ${STATUS_LABELS[ticket.status]} 变更为 ${STATUS_LABELS.processing}`,
+    content: note.trim(),
   });
   persist();
-  res.json({ success: true, data: { ticket: updated } });
+  const timeline = getTimelineEvents(ticket.id);
+  res.json({ success: true, data: { timeline } });
 });
 
+const ESCALATION_FORBIDDEN_KEYS = ['isEscalated', 'escalatedAt', 'escalationReason', 'escalationOwnerId', 'escalationOwner'];
+function hasEscalationFields(obj: Record<string, unknown> | undefined | null): string | null {
+  if (!obj) return null;
+  for (const k of Object.keys(obj)) {
+    if (ESCALATION_FORBIDDEN_KEYS.includes(k)) return k;
+  }
+  return null;
+}
+
 router.put('/:id/status', (req: AuthRequest, res: Response): void => {
+  const forbidden = hasEscalationFields(req.body);
+  if (forbidden) {
+    res.status(403).json({
+      success: false,
+      error: `不允许手动修改催办字段「${forbidden}」，催办由系统按优先级时限自动触发，仅管理员可通过撤销接口操作`,
+    });
+    return;
+  }
+  // existing logic continues below - we'll replace the original
+  _handleStatusChange(req, res);
+});
+
+function _handleStatusChange(req: AuthRequest, res: Response): void {
   const ticket = getTicketById(req.params.id);
   if (!ticket) {
     res.status(404).json({ success: false, error: '工单不存在' });
@@ -249,36 +265,91 @@ router.put('/:id/status', (req: AuthRequest, res: Response): void => {
   });
   persist();
   res.json({ success: true, data: { ticket: updated } });
+}
+
+router.post('/:id/assign', requireRoles('admin', 'technician'), (req: AuthRequest, res: Response): void => {
+  const forbidden = hasEscalationFields(req.body);
+  if (forbidden) {
+    res.status(403).json({
+      success: false,
+      error: `不允许通过派工接口修改催办字段「${forbidden}」`,
+    });
+    return;
+  }
+  return _handleAssign(req, res);
 });
 
-router.post('/:id/note', (req: AuthRequest, res: Response): void => {
+function _handleAssign(req: AuthRequest, res: Response): void {
   const ticket = getTicketById(req.params.id);
   if (!ticket) {
     res.status(404).json({ success: false, error: '工单不存在' });
     return;
   }
+
   if (ticket.status === 'completed') {
     res.status(400).json({
       success: false,
-      error: '已完成的工单不能添加备注，请先由管理员重新打开后再操作',
+      error: '已完成的工单不能直接派工，请先由管理员重新打开并填写原因后再派工',
     });
     return;
   }
-  const { note } = req.body;
-  if (!note || !note.trim()) {
-    res.status(400).json({ success: false, error: '备注内容不能为空' });
+
+  if (ticket.status !== 'pending' && ticket.status !== 'reopened') {
+    res.status(400).json({
+      success: false,
+      error: `当前状态「${STATUS_LABELS[ticket.status]}」不允许派工，只有待派工或重新打开的工单可以派工`,
+    });
+    return;
+  }
+
+  const { assigneeId, note } = req.body;
+  if (!assigneeId) {
+    res.status(400).json({ success: false, error: '请选择处理人' });
+    return;
+  }
+  const assignee = findUserById(assigneeId);
+  if (!assignee || (assignee.role !== 'technician' && assignee.role !== 'admin')) {
+    res.status(400).json({ success: false, error: '处理人必须是技术员或管理员' });
+    return;
+  }
+
+  const user = req.user!;
+  const updated = updateTicket(ticket.id, { assigneeId, status: 'processing' });
+  addTimelineEvent({
+    ticketId: ticket.id,
+    type: 'assigned',
+    userId: user.id,
+    content: `将工单派给 ${assignee.name}${note ? `：${note}` : ''}`,
+  });
+  addTimelineEvent({
+    ticketId: ticket.id,
+    type: 'status_changed',
+    userId: user.id,
+    content: `状态从 ${STATUS_LABELS[ticket.status]} 变更为 ${STATUS_LABELS.processing}`,
+  });
+  persist();
+  res.json({ success: true, data: { ticket: updated } });
+}
+
+router.post('/:id/de-escalate', requireRoles('admin'), (req: AuthRequest, res: Response): void => {
+  const { reason } = req.body;
+  if (!reason || !String(reason).trim()) {
+    res.status(400).json({ success: false, error: '撤销催办必须填写原因' });
     return;
   }
   const user = req.user!;
-  addTimelineEvent({
-    ticketId: ticket.id,
-    type: 'note_added',
-    userId: user.id,
-    content: note.trim(),
-  });
+  const result = deEscalateTicket(req.params.id, user.id, String(reason).trim());
+  if (!result.success) {
+    res.status(400).json({ success: false, error: result.error });
+    return;
+  }
   persist();
-  const timeline = getTimelineEvents(ticket.id);
-  res.json({ success: true, data: { timeline } });
+  const timeline = getTimelineEvents(req.params.id);
+  const escalationRecords = getEscalationRecordsByTicket(req.params.id);
+  res.json({
+    success: true,
+    data: { ticket: result.ticket, timeline, escalationRecords },
+  });
 });
 
 export default router;

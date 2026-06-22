@@ -15,9 +15,11 @@ import {
   CheckCircle2,
   Play,
   Send,
+  Megaphone,
+  Undo2,
 } from 'lucide-react';
 import { useTicketStore, useConfigStore, useAuthStore } from '../store';
-import { getStatusBadgeClass, getStatusLabel, formatDateTime } from '../utils/helpers';
+import { getStatusBadgeClass, getStatusLabel, formatDateTime, getEscalationBadgeClass } from '../utils/helpers';
 import Modal from '../components/common/Modal';
 import { showToastGlobal } from '../components/layout/MainLayout';
 import type { TicketStatus } from '../../shared/types';
@@ -25,7 +27,7 @@ import type { TicketStatus } from '../../shared/types';
 export default function TicketDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { currentTicket, timeline, fetchTicketDetail, assignTicket, updateTicketStatus, addNote, isLoading } = useTicketStore();
+  const { currentTicket, timeline, escalationRecords, fetchTicketDetail, assignTicket, updateTicketStatus, addNote, revokeEscalation, isLoading } = useTicketStore();
   const { technicians } = useConfigStore();
   const { user } = useAuthStore();
 
@@ -36,6 +38,8 @@ export default function TicketDetail() {
   const [reopenReason, setReopenReason] = useState('');
   const [noteText, setNoteText] = useState('');
   const [actionNote, setActionNote] = useState('');
+  const [deEscalateModalOpen, setDeEscalateModalOpen] = useState(false);
+  const [deEscalateReason, setDeEscalateReason] = useState('');
 
   useEffect(() => {
     if (id) fetchTicketDetail(id);
@@ -88,9 +92,22 @@ export default function TicketDetail() {
     }
   };
 
+  const handleDeEscalate = async () => {
+    if (!id || !deEscalateReason.trim()) return;
+    try {
+      await revokeEscalation(id, deEscalateReason);
+      showToastGlobal('催办已撤销', 'success');
+      setDeEscalateModalOpen(false);
+      setDeEscalateReason('');
+    } catch (err) {
+      showToastGlobal(err instanceof Error ? err.message : '撤销失败', 'error');
+    }
+  };
+
   const canAssign = user?.role === 'admin' || user?.role === 'technician';
   const canClose = user?.role === 'admin' || user?.role === 'technician';
   const canReopen = user?.role === 'admin';
+  const canDeEscalate = user?.role === 'admin';
   const isAssignedToCurrent = currentTicket?.assigneeId === user?.id || user?.role === 'admin';
 
   if (!currentTicket && !isLoading) {
@@ -134,10 +151,10 @@ export default function TicketDetail() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <div className="card p-6">
+          <div className={`card p-6 ${t.isEscalated ? 'ring-2 ring-rose-300 border-rose-300' : ''}`}>
             <div className="flex items-start justify-between gap-4 mb-4">
               <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
+                <div className="flex flex-wrap items-center gap-2 mb-2">
                   <span className={`badge ${getStatusBadgeClass(t.status)}`}>
                     {getStatusLabel(t.status)}
                   </span>
@@ -147,23 +164,63 @@ export default function TicketDetail() {
                       {t.priority.name}优先级
                     </span>
                   )}
+                  {t.isEscalated && (
+                    <span className={`badge ${getEscalationBadgeClass()} flex items-center gap-1`} title={t.escalationReason}>
+                      <Megaphone className="w-3.5 h-3.5" />
+                      催办升级中
+                    </span>
+                  )}
                 </div>
                 <h1 className="text-xl font-bold text-slate-900">{t.asset?.name || '未知设备'}</h1>
                 <p className="text-sm text-slate-500 font-mono">{t.asset?.code}</p>
               </div>
-              {canAssign && (t.status === 'pending' || t.status === 'reopened') && (
-                <button onClick={() => setAssignModalOpen(true)} className="btn-primary">
-                  <UserCheck className="w-4 h-4" />
-                  派工
-                </button>
-              )}
-              {canReopen && t.status === 'completed' && (
-                <button onClick={() => setReopenModalOpen(true)} className="btn-secondary">
-                  <RotateCcw className="w-4 h-4" />
-                  重新打开
-                </button>
-              )}
+              <div className="flex flex-wrap items-center gap-2">
+                {canDeEscalate && t.isEscalated && (
+                  <button onClick={() => setDeEscalateModalOpen(true)} className="btn-secondary bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100">
+                    <Undo2 className="w-4 h-4" />
+                    撤销催办
+                  </button>
+                )}
+                {canAssign && (t.status === 'pending' || t.status === 'reopened') && (
+                  <button onClick={() => setAssignModalOpen(true)} className="btn-primary">
+                    <UserCheck className="w-4 h-4" />
+                    派工
+                  </button>
+                )}
+                {canReopen && t.status === 'completed' && (
+                  <button onClick={() => setReopenModalOpen(true)} className="btn-secondary">
+                    <RotateCcw className="w-4 h-4" />
+                    重新打开
+                  </button>
+                )}
+              </div>
             </div>
+
+            {t.isEscalated && (
+              <div className="mb-4 p-4 bg-rose-50 border border-rose-200 rounded-xl">
+                <h4 className="font-semibold text-rose-800 mb-2 flex items-center gap-2">
+                  <Megaphone className="w-4 h-4" />
+                  催办升级信息
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <p className="text-xs text-rose-500 mb-0.5">催办时间</p>
+                    <p className="font-medium text-rose-900">{t.escalatedAt ? formatDateTime(t.escalatedAt) : '-'}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-xs text-rose-500 mb-0.5">升级原因</p>
+                    <p className="font-medium text-rose-900">{t.escalationReason || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-rose-500 mb-0.5">升级负责人</p>
+                    <p className="font-medium text-rose-900 flex items-center gap-1">
+                      <User className="w-3.5 h-3.5" />
+                      {t.escalationOwner?.name || '-'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4 py-4 border-y border-slate-100">
               <div className="flex items-start gap-2">
@@ -286,14 +343,25 @@ export default function TicketDetail() {
                       event.type === 'reopened' ? 'bg-orange-500 border-orange-100' :
                       event.type === 'created' ? 'bg-green-500 border-green-100' :
                       event.type === 'assigned' ? 'bg-indigo-500 border-indigo-100' :
+                      event.type === 'escalated' ? 'bg-rose-500 border-rose-100' :
+                      event.type === 'de_escalated' ? 'bg-purple-500 border-purple-100' :
                       'bg-blue-500 border-blue-100'
                     }`} />
-                    <div className="bg-slate-50 rounded-lg p-3">
+                    <div className={`rounded-lg p-3 ${
+                      event.type === 'escalated' ? 'bg-rose-50 border border-rose-100' :
+                      event.type === 'de_escalated' ? 'bg-purple-50 border border-purple-100' :
+                      'bg-slate-50'
+                    }`}>
                       <div className="flex items-center justify-between mb-1">
                         <p className="text-sm font-medium text-slate-900">{event.user?.name || '系统'}</p>
                         <p className="text-xs text-slate-500">{formatDateTime(event.createdAt)}</p>
                       </div>
-                      <p className={`text-sm ${event.type === 'reopened' ? 'text-orange-700 font-medium' : 'text-slate-600'}`}>
+                      <p className={`text-sm ${
+                        event.type === 'reopened' ? 'text-orange-700 font-medium' :
+                        event.type === 'escalated' ? 'text-rose-700 font-medium' :
+                        event.type === 'de_escalated' ? 'text-purple-700 font-medium' :
+                        'text-slate-600'
+                      }`}>
                         {event.content}
                       </p>
                     </div>
@@ -375,6 +443,35 @@ export default function TicketDetail() {
           <div className="flex justify-end gap-2">
             <button onClick={() => setReopenModalOpen(false)} className="btn-secondary">取消</button>
             <button onClick={handleReopen} disabled={!reopenReason.trim()} className="btn-primary">确认打开</button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={deEscalateModalOpen} onClose={() => setDeEscalateModalOpen(false)} title="撤销催办升级">
+        <div className="space-y-4">
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+            <p className="font-medium mb-1">撤销将产生以下影响：</p>
+            <ul className="list-disc list-inside space-y-0.5 text-xs">
+              <li>清除工单的「催办中」状态标记</li>
+              <li>在时间线中记录撤销操作（含撤销原因）</li>
+              <li>后续若仍超时，系统会重新触发催办</li>
+            </ul>
+          </div>
+          <div>
+            <label className="label">撤销原因 <span className="text-rose-500">*</span></label>
+            <textarea
+              className="input resize-none h-28"
+              placeholder="请填写撤销催办的原因，例如：误判、已临时处理等..."
+              value={deEscalateReason}
+              onChange={(e) => setDeEscalateReason(e.target.value)}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setDeEscalateModalOpen(false)} className="btn-secondary">取消</button>
+            <button onClick={handleDeEscalate} disabled={!deEscalateReason.trim()} className="btn-primary bg-rose-600 hover:bg-rose-700">
+              <Undo2 className="w-4 h-4" />
+              确认撤销
+            </button>
           </div>
         </div>
       </Modal>

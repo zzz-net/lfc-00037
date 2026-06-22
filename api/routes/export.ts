@@ -39,6 +39,10 @@ function buildExportRow(t: ReturnType<typeof getTickets>[0], techMap: Map<string
     状态: STATUS_LABELS[t.status] || t.status,
     报修人: t.submitter?.name || '',
     处理人: t.assignee?.name || (t.assigneeId ? techMap.get(t.assigneeId) || '' : ''),
+    是否催办: t.isEscalated ? '是' : '否',
+    催办时间: t.escalatedAt || '',
+    升级原因: t.escalationReason || '',
+    升级负责人: t.escalationOwner?.name || (t.escalationOwnerId ? techMap.get(t.escalationOwnerId) || '' : ''),
     创建时间: t.createdAt,
     更新时间: t.updatedAt,
     关闭时间: t.closedAt || '',
@@ -75,7 +79,8 @@ router.get('/tickets', authMiddleware, requireRoles('admin'), (req: AuthRequest,
   const sampleRow = tickets.length > 0 ? buildExportRow(tickets[0], techMap) : null;
   const headers = sampleRow ? Object.keys(sampleRow) : [
     '工单ID', '设备名称', '设备编号', '设备类型', '位置', '问题描述',
-    '优先级', '状态', '报修人', '处理人', '创建时间', '更新时间',
+    '优先级', '状态', '报修人', '处理人', '是否催办', '催办时间',
+    '升级原因', '升级负责人', '创建时间', '更新时间',
     '关闭时间', '重新打开原因', '状态变更记录',
   ];
 

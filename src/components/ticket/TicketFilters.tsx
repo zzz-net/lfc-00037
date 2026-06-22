@@ -1,4 +1,4 @@
-import { Search, X, Filter } from 'lucide-react';
+import { Search, X, Filter, Megaphone } from 'lucide-react';
 import { useTicketStore, useConfigStore } from '../../store';
 import type { TicketFilters as TF, TicketStatus } from '../../../shared/types';
 import { STATUS_LABELS } from '../../../shared/types';
@@ -32,6 +32,8 @@ export default function TicketFilters({ showSearch = true, showStatus = true }: 
 
   const hasFilters = Object.keys(filters).length > 0;
 
+  const gridCols = showStatus ? 'lg:grid-cols-7' : 'lg:grid-cols-6';
+
   return (
     <div className="card p-4 mb-6">
       <div className="flex items-center gap-2 mb-4">
@@ -48,7 +50,7 @@ export default function TicketFilters({ showSearch = true, showStatus = true }: 
         )}
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className={`grid grid-cols-2 md:grid-cols-3 ${gridCols} gap-3`}>
         {showSearch && (
           <div className="lg:col-span-2">
             <label className="label">搜索</label>
@@ -137,6 +139,27 @@ export default function TicketFilters({ showSearch = true, showStatus = true }: 
             </select>
           </div>
         )}
+
+        <div>
+          <label className="label flex items-center gap-1">
+            <Megaphone className="w-3 h-3 text-rose-500" />
+            催办状态
+          </label>
+          <select
+            className="select"
+            value={filters.isEscalated || ''}
+            onChange={(e) =>
+              updateFilter(
+                'isEscalated',
+                e.target.value === '' ? undefined : (e.target.value as 'yes' | 'no')
+              )
+            }
+          >
+            <option value="">全部</option>
+            <option value="yes">已催办</option>
+            <option value="no">未催办</option>
+          </select>
+        </div>
       </div>
     </div>
   );

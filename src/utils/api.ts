@@ -120,6 +120,13 @@ export async function addTicketNote(id: string, note: string) {
   });
 }
 
+export async function deEscalateTicket(id: string, reason: string) {
+  return request<{ ticket: Ticket; timeline: TimelineEvent[] }>(`/tickets/${id}/de-escalate`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+}
+
 export async function getAssets() {
   return request<{ assets: Asset[]; groups: AssetGroup[] }>('/assets');
 }

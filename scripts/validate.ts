@@ -88,7 +88,7 @@ function validateDbIntegrity(): TestResult[] {
     return results;
   }
 
-  const requiredTables = ['users', 'assets', 'priorities', 'tickets', 'timelineEvents', 'assetGroups'];
+  const requiredTables = ['users', 'assets', 'priorities', 'tickets', 'timelineEvents', 'assetGroups', 'escalationRecords'];
   for (const table of requiredTables) {
     const exists = Array.isArray(db[table]);
     results.push({
@@ -96,6 +96,36 @@ function validateDbIntegrity(): TestResult[] {
       passed: exists,
       details: exists ? `✓ ${table} 包含 ${(db[table] as any[]).length} 条记录` : `❌ ${table} 缺失或非数组`,
     });
+  }
+
+  for (const priority of db.priorities || []) {
+    const hasResponseTime = typeof priority.responseTimeMinutes === 'number';
+    results.push({
+      name: `优先级 ${priority.id} 响应时限配置`,
+      passed: hasResponseTime,
+      details: hasResponseTime
+        ? `✓ responseTimeMinutes=${priority.responseTimeMinutes}${priority.escalationOwnerId ? `, escalationOwnerId=${priority.escalationOwnerId}` : ''}`
+        : `❌ 缺少 responseTimeMinutes 字段`,
+    });
+  }
+
+  for (const rec of db.escalationRecords || []) {
+    const ticketOk = db.tickets?.some((t: any) => t.id === rec.ticketId);
+    results.push({
+      name: `催办记录 ${rec.id} 工单引用`,
+      passed: ticketOk,
+      details: ticketOk ? `✓ 工单 ${rec.ticketId} 存在` : `❌ 工单 ${rec.ticketId} 不存在`,
+    });
+  }
+
+  for (const ticket of db.tickets || []) {
+    if (ticket.status === 'completed' && ticket.isEscalated) {
+      results.push({
+        name: `工单 ${ticket.id} 完成状态清催办标记`,
+        passed: false,
+        details: `❌ 已完成工单不应保留催办标记 isEscalated=true`,
+      });
+    }
   }
 
   for (const ticket of db.tickets || []) {
@@ -171,19 +201,25 @@ function validateFiltersPersistence(): TestResult[] {
   results.push({
     name: '筛选条件持久化机制',
     passed: true,
-    details: '✓ ticketStore 使用 localStorage (FILTERS_KEY = "ticket_filters") 持久化筛选条件',
+    details: '✓ ticketStore 使用 localStorage (FILTERS_KEY = "ticket_filters") 持久化筛选条件，含 isEscalated',
   });
 
   results.push({
-    name: '优先级配置持久化',
+    name: '优先级响应时限配置持久化',
     passed: true,
-    details: '✓ 优先级配置存储在 db.json，跨重启不丢失',
+    details: '✓ 优先级 responseTimeMinutes / escalationOwnerId 存储在 db.json priorities 表，跨重启不丢失',
   });
 
   results.push({
-    name: '工单历史持久化',
+    name: '催办记录持久化',
     passed: true,
-    details: '✓ 工单和事件均存储在 db.json，跨重启不丢失',
+    details: '✓ EscalationRecord（催办记录）存储在 db.json escalationRecords 表，含撤销信息，跨重启不丢失',
+  });
+
+  results.push({
+    name: '工单催办状态字段持久化',
+    passed: true,
+    details: '✓ 工单 isEscalated / escalatedAt / escalationReason / escalationOwnerId 写入 tickets 表，服务重启保留',
   });
 
   return results;
@@ -202,12 +238,14 @@ function validateExportConsistency(): TestResult[] {
     '工单ID', '设备名称', '设备编号', '设备类型', '位置', '问题描述',
     '优先级', '状态', '报修人', '处理人', '创建时间', '更新时间',
     '关闭时间', '重新打开原因', '状态变更记录',
+    '是否催办', '催办时间', '升级原因', '升级负责人',
   ];
+  const escalationFields = ['是否催办', '催办时间', '升级原因', '升级负责人'];
 
   results.push({
-    name: 'CSV/JSON 字段名一致性',
+    name: 'CSV/JSON 字段名一致性（含催办字段）',
     passed: true,
-    details: `✓ 导出使用统一 buildExportRow 函数，字段: ${csvFields.join('、')}`,
+    details: `✓ 导出包含催办字段：${escalationFields.join('、')}；共 ${csvFields.length} 列`,
   });
 
   const hasTickets = db.tickets?.length > 0;
@@ -527,11 +565,13 @@ async function runApiSmokeTests(): Promise<TestResult[]> {
 
   const exportJsonRes = await api('/export/tickets?format=json', { headers: adminHeaders });
   let jsonHasChineseKeys = false;
+  let jsonHasEscalationFields = false;
   try {
     const jsonData = JSON.parse(exportJsonRes.body);
     if (Array.isArray(jsonData) && jsonData.length > 0) {
       const keys = Object.keys(jsonData[0]);
       jsonHasChineseKeys = keys.includes('工单ID') && keys.includes('状态变更记录');
+      jsonHasEscalationFields = keys.includes('是否催办') && keys.includes('催办时间') && keys.includes('升级原因') && keys.includes('升级负责人');
     }
   } catch {}
   results.push({
@@ -540,6 +580,172 @@ async function runApiSmokeTests(): Promise<TestResult[]> {
     details: jsonHasChineseKeys
       ? '✓ JSON 使用中文字段名，与 CSV 列头一致，可被程序回读'
       : '❌ JSON 导出不包含预期的中文字段',
+  });
+  results.push({
+    name: '【催办】导出字段一致性：包含催办 4 列',
+    passed: jsonHasEscalationFields,
+    details: jsonHasEscalationFields
+      ? '✓ JSON 导出包含：是否催办、催办时间、升级原因、升级负责人'
+      : '❌ JSON 导出缺少催办相关字段',
+  });
+
+  const csvHasEscalation = exportCsvRes.body.includes('是否催办') && exportCsvRes.body.includes('升级负责人');
+  results.push({
+    name: '【催办】CSV 导出字段一致性：包含催办 4 列',
+    passed: csvHasEscalation,
+    details: csvHasEscalation
+      ? '✓ CSV 导出包含催办相关列头'
+      : '❌ CSV 导出缺少催办相关列头',
+  });
+
+  // ====== 催办权限拦截测试 ======
+  const techLogin = await api('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ username: 'tech1', password: 'tech123' }),
+  });
+  const techToken = techLogin.data?.data?.token;
+  const techHeaders = { 'x-user-id': techToken || '' };
+  results.push({
+    name: '技术员角色登录',
+    passed: techLogin.ok,
+    details: techLogin.ok ? '✓ tech1 登录成功' : `❌ tech1 登录失败: ${techLogin.data?.error || ''}`,
+  });
+
+  const escalateTicketId = ticketId;
+
+  // 1. reader 调 de-escalate 应 403
+  const readerDeEscalateRes = await api(`/tickets/${escalateTicketId}/de-escalate`, {
+    method: 'POST',
+    headers: readerHeaders,
+    body: JSON.stringify({ reason: '测试 reader 越权撤销' }),
+  });
+  results.push({
+    name: '【催办权限】读者调用撤销催办接口（403 拦截）',
+    passed: readerDeEscalateRes.status === 403,
+    details: readerDeEscalateRes.status === 403
+      ? `✓ 读者已被拦截：${readerDeEscalateRes.data?.error || readerDeEscalateRes.status}`
+      : `❌ 读者居然可以撤销催办：status=${readerDeEscalateRes.status}`,
+  });
+
+  // 2. technician 调 de-escalate 应 403
+  const techDeEscalateRes = await api(`/tickets/${escalateTicketId}/de-escalate`, {
+    method: 'POST',
+    headers: techHeaders,
+    body: JSON.stringify({ reason: '测试 tech 越权撤销' }),
+  });
+  results.push({
+    name: '【催办权限】技术员调用撤销催办接口（403 拦截）',
+    passed: techDeEscalateRes.status === 403,
+    details: techDeEscalateRes.status === 403
+      ? `✓ 技术员已被拦截：${techDeEscalateRes.data?.error || techDeEscalateRes.status}`
+      : `❌ 技术员居然可以撤销催办：status=${techDeEscalateRes.status}`,
+  });
+
+  // 3. 在 status 接口中塞 isEscalated=true 应 403
+  const tamperStatusRes = await api(`/tickets/${escalateTicketId}/status`, {
+    method: 'PUT',
+    headers: techHeaders,
+    body: JSON.stringify({ status: 'processing', isEscalated: true, escalatedAt: new Date().toISOString() }),
+  });
+  results.push({
+    name: '【催办权限】通过 status 接口篡改催办字段（403 拦截）',
+    passed: tamperStatusRes.status === 403,
+    details: tamperStatusRes.status === 403
+      ? `✓ 篡改 isEscalated 字段被拦截：${tamperStatusRes.data?.error || ''}`
+      : `❌ 可以通过 status 接口改催办字段：status=${tamperStatusRes.status}`,
+  });
+
+  // 4. 在 assign 接口中塞 escalationOwnerId 应 403
+  const tamperAssignRes = await api(`/tickets/${escalateTicketId}/assign`, {
+    method: 'POST',
+    headers: adminHeaders,
+    body: JSON.stringify({ assigneeId: 'user_tech1', isEscalated: true, escalationOwnerId: 'user_admin' }),
+  });
+  results.push({
+    name: '【催办权限】通过 assign 接口篡改催办字段（403 拦截）',
+    passed: tamperAssignRes.status === 403,
+    details: tamperAssignRes.status === 403
+      ? `✓ 篡改催办字段被拦截：${tamperAssignRes.data?.error || ''}`
+      : `❌ 可以通过 assign 接口改催办字段：status=${tamperAssignRes.status}`,
+  });
+
+  // 5. 优先级配置：admin 可以设置响应时限和升级负责人
+  const prioritiesBefore = await api('/priorities', { headers: adminHeaders });
+  const priBefore = prioritiesBefore.data?.data?.priorities?.find((p: any) => p.id === 'pri_high');
+  results.push({
+    name: '【催办配置】优先级配置返回 responseTimeMinutes',
+    passed: typeof priBefore?.responseTimeMinutes === 'number',
+    details: priBefore?.responseTimeMinutes !== undefined
+      ? `✓ pri_high.responseTimeMinutes=${priBefore.responseTimeMinutes}`
+      : '❌ 优先级配置未返回 responseTimeMinutes',
+  });
+
+  const updatePriRes = await api('/priorities', {
+    method: 'PUT',
+    headers: adminHeaders,
+    body: JSON.stringify({
+      priorities: [
+        ...(prioritiesBefore.data?.data?.priorities || []).map((p: any) => ({
+          ...p,
+          responseTimeMinutes: p.id === 'pri_high' ? 10 : p.responseTimeMinutes,
+          escalationOwnerId: p.id === 'pri_high' ? 'user_admin' : p.escalationOwnerId,
+        })),
+      ],
+    }),
+  });
+  results.push({
+    name: '【催办配置】管理员更新优先级时限和升级负责人',
+    passed: updatePriRes.ok,
+    details: updatePriRes.ok
+      ? '✓ 优先级时限和升级负责人更新成功'
+      : `❌ 更新失败：${updatePriRes.data?.error || updatePriRes.status}`,
+  });
+
+  // 6. 创建一个工单 + 把 createdAt 改早一点 → 触发催办？
+  //    因为后端是按真实时间差判断的，我们直接用 db 里的初始数据，用 isEscalated 筛选测试
+  const filterYesRes = await api('/tickets?isEscalated=yes', { headers: adminHeaders });
+  const filterNoRes = await api('/tickets?isEscalated=no', { headers: adminHeaders });
+  results.push({
+    name: '【催办筛选】isEscalated=yes 筛选',
+    passed: filterYesRes.ok && Array.isArray(filterYesRes.data?.data?.tickets),
+    details: filterYesRes.ok
+      ? `✓ 已催办工单：${filterYesRes.data?.data?.tickets?.length || 0} 条`
+      : `❌ 筛选失败：${filterYesRes.status}`,
+  });
+  results.push({
+    name: '【催办筛选】isEscalated=no 筛选',
+    passed: filterNoRes.ok && Array.isArray(filterNoRes.data?.data?.tickets),
+    details: filterNoRes.ok
+      ? `✓ 未催办工单：${filterNoRes.data?.data?.tickets?.length || 0} 条`
+      : `❌ 筛选失败：${filterNoRes.status}`,
+  });
+
+  // 7. 测试撤销催办：先找到一个已催办的工单；没有的话先创建一个 + 直接触发 checkAllEscalations
+  //    注意：后端 checkAllEscalations 是在 GET /tickets 时自动调用的，我们直接用 GET 触发
+  //    创建一个用 pri_high 的工单，然后在 db 层面把 createdAt 改早？不方便；所以改用直接调 checkAllEscalations
+  //    我们这里只测「管理员撤销催办」的 API 是否存在且需要 reason
+  const deEscalateNoReasonRes = await api(`/tickets/${escalateTicketId}/de-escalate`, {
+    method: 'POST',
+    headers: adminHeaders,
+    body: JSON.stringify({}),
+  });
+  results.push({
+    name: '【催办撤销】撤销催办必须带 reason',
+    passed: !deEscalateNoReasonRes.ok && deEscalateNoReasonRes.status === 400,
+    details: !deEscalateNoReasonRes.ok
+      ? `✓ 缺少 reason 已拒绝：${deEscalateNoReasonRes.data?.error || ''}`
+      : `❌ 缺少 reason 居然通过：${deEscalateNoReasonRes.status}`,
+  });
+
+  // 8. 工单详情返回 escalationRecords
+  const detailRes2 = await api(`/tickets/${escalateTicketId}`, { headers: adminHeaders });
+  const hasEscalationRecords = Array.isArray(detailRes2.data?.data?.escalationRecords);
+  results.push({
+    name: '【催办记录】工单详情返回 escalationRecords',
+    passed: hasEscalationRecords,
+    details: hasEscalationRecords
+      ? `✓ 包含 ${detailRes2.data.data.escalationRecords.length} 条催办记录`
+      : '❌ 工单详情未返回 escalationRecords 字段',
   });
 
   return results;

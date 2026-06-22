@@ -1,8 +1,8 @@
 import { useNavigate } from 'react-router-dom';
-import { Plus, Eye, MapPin, User, AlertCircle } from 'lucide-react';
+import { Plus, Eye, MapPin, User, AlertCircle, Megaphone } from 'lucide-react';
 import { useTicketStore } from '../store';
 import TicketFilters from '../components/ticket/TicketFilters';
-import { getStatusBadgeClass, getStatusLabel, formatDateTime } from '../utils/helpers';
+import { getStatusBadgeClass, getStatusLabel, formatDateTime, getEscalationBadgeClass } from '../utils/helpers';
 
 export default function TicketList() {
   const { tickets, isLoading, total } = useTicketStore();
@@ -37,6 +37,9 @@ export default function TicketList() {
                   <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">位置</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">优先级</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">状态</th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <span className="flex items-center gap-1"><Megaphone className="w-3 h-3 text-rose-500" />催办</span>
+                  </th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">处理人</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">提交时间</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">操作</th>
@@ -44,10 +47,22 @@ export default function TicketList() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {tickets.map((ticket) => (
-                  <tr key={ticket.id} className="hover:bg-slate-50/50 transition-colors">
+                  <tr
+                    key={ticket.id}
+                    className={`hover:bg-slate-50/50 transition-colors ${
+                      ticket.isEscalated ? 'bg-rose-50/40' : ''
+                    }`}
+                  >
                     <td className="px-6 py-4">
                       <div>
-                        <p className="font-medium text-slate-900 text-sm">{ticket.asset?.name || '未知设备'}</p>
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-medium text-slate-900 text-sm">{ticket.asset?.name || '未知设备'}</p>
+                          {ticket.isEscalated && (
+                            <span className={`badge ${getEscalationBadgeClass()} text-[10px] py-0.5 px-1.5`} title={ticket.escalationReason}>
+                              <Megaphone className="w-3 h-3 inline mr-0.5" />催办中
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-slate-500 font-mono">{ticket.asset?.code}</p>
                         <p className="text-xs text-slate-600 mt-1 line-clamp-1">{ticket.description}</p>
                       </div>
@@ -70,6 +85,25 @@ export default function TicketList() {
                       <span className={`badge ${getStatusBadgeClass(ticket.status)}`}>
                         {getStatusLabel(ticket.status)}
                       </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      {ticket.isEscalated ? (
+                        <div className="space-y-1">
+                          <p className="text-xs font-medium text-rose-700">
+                            催办时间：{ticket.escalatedAt ? formatDateTime(ticket.escalatedAt) : '-'}
+                          </p>
+                          <p className="text-xs text-rose-600 line-clamp-1 max-w-[200px]" title={ticket.escalationReason}>
+                            升级原因：{ticket.escalationReason || '-'}
+                          </p>
+                          {ticket.escalationOwner && (
+                            <p className="text-xs text-rose-600 flex items-center gap-1">
+                              <User className="w-3 h-3" />督办：{ticket.escalationOwner.name}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-400">—</span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       {ticket.assignee ? (
