@@ -82,6 +82,7 @@ export interface EscalationRecord {
   id: string;
   ticketId: string;
   priorityId: string;
+  responseTimeMinutesAtTrigger: number;
   escalatedAt: string;
   escalationReason: string;
   escalationOwnerId: string;

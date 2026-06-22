@@ -269,7 +269,8 @@ function validateDatabase(db: Database): { fixed: number; warnings: string[] } {
     if (!ticketIds.has(rec.ticketId)) {
       warnings.push(`催办记录 ${rec.id} 引用的工单 ${rec.ticketId} 不存在`);
     }
-    if (!db.priorities.find((p) => p.id === rec.priorityId)) {
+    const pri = db.priorities.find((p) => p.id === rec.priorityId);
+    if (!pri) {
       warnings.push(`催办记录 ${rec.id} 引用的优先级 ${rec.priorityId} 不存在`);
     }
     if (!db.users.find((u) => u.id === rec.escalationOwnerId)) {
@@ -277,6 +278,11 @@ function validateDatabase(db: Database): { fixed: number; warnings: string[] } {
     }
     if (rec.deEscalatedBy && !db.users.find((u) => u.id === rec.deEscalatedBy)) {
       warnings.push(`催办记录 ${rec.id} 引用的撤销人 ${rec.deEscalatedBy} 不存在`);
+    }
+    if (typeof rec.responseTimeMinutesAtTrigger !== 'number') {
+      rec.responseTimeMinutesAtTrigger = pri?.responseTimeMinutes || 0;
+      warnings.push(`催办记录 ${rec.id} 缺少 responseTimeMinutesAtTrigger，已补默认值 ${rec.responseTimeMinutesAtTrigger}`);
+      fixed++;
     }
   }
 
@@ -512,6 +518,34 @@ export function checkAndTriggerEscalation(ticketId: string): { triggered: boolea
     return { triggered: false, reason: '优先级未配置时限或不限时' };
   }
 
+  // 检查是否存在已撤销的催办记录，且未满足重新触发条件
+  const lastDeEscalated = db.escalationRecords
+    .filter((r) => r.ticketId === ticketId && r.deEscalatedAt)
+    .sort((a, b) => new Date(b.deEscalatedAt!).getTime() - new Date(a.deEscalatedAt!).getTime())[0];
+
+  if (lastDeEscalated) {
+    const deEscalatedTime = new Date(lastDeEscalated.deEscalatedAt!).getTime();
+
+    // 重新触发条件1：撤销后工单被重新打开（completed→reopened）
+    const reopenedAfter = db.timelineEvents.some(
+      (e) => e.ticketId === ticketId && e.type === 'reopened' && new Date(e.createdAt).getTime() > deEscalatedTime
+    );
+
+    // 重新触发条件2：优先级变更
+    const priorityChanged = ticket.priorityId !== lastDeEscalated.priorityId;
+
+    // 重新触发条件3：响应时限变更（比之前更严格，即时限变小）
+    const currentResponseTime = priority.responseTimeMinutes!;
+    const responseTimeTightened = currentResponseTime < lastDeEscalated.responseTimeMinutesAtTrigger;
+
+    if (!reopenedAfter && !priorityChanged && !responseTimeTightened) {
+      return {
+        triggered: false,
+        reason: `已被管理员撤销催办，未满足重新触发条件（需重开、优先级变更或响应时限收紧）`,
+      };
+    }
+  }
+
   const created = new Date(ticket.createdAt).getTime();
   const now = Date.now();
   const elapsedMinutes = (now - created) / 60000;
@@ -534,6 +568,7 @@ export function checkAndTriggerEscalation(ticketId: string): { triggered: boolea
     id: generateId(),
     ticketId: ticket.id,
     priorityId: priority.id,
+    responseTimeMinutesAtTrigger: priority.responseTimeMinutes,
     escalatedAt: ticket.escalatedAt,
     escalationReason: ticket.escalationReason,
     escalationOwnerId,
