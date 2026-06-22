@@ -16,6 +16,9 @@ import type {
   EscalationExceptionType,
   BatchOperationResult,
   BatchResultItem,
+  BatchOperationType,
+  BatchFailureType,
+  PersistedBatchOperation,
 } from '../../shared/types.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -172,6 +175,7 @@ function getInitialDatabase(): Database {
     timelineEvents: [],
     escalationRecords: [],
     escalationExceptions: [],
+    batchOperations: [],
   };
 }
 
@@ -190,6 +194,12 @@ function validateDatabase(db: Database): { fixed: number; warnings: string[] } {
   if (!db.escalationExceptions) {
     db.escalationExceptions = [];
     warnings.push('数据库缺少 escalationExceptions 表，已初始化空数组');
+    fixed++;
+  }
+
+  if (!db.batchOperations) {
+    db.batchOperations = [];
+    warnings.push('数据库缺少 batchOperations 表，已初始化空数组');
     fixed++;
   }
 
@@ -335,6 +345,16 @@ function validateDatabase(db: Database): { fixed: number; warnings: string[] } {
     }
   }
 
+  for (const bo of db.batchOperations) {
+    if (!db.users.find((u) => u.id === bo.operatorId)) {
+      warnings.push(`批量操作 ${bo.batchOperationId} 引用的操作人 ${bo.operatorId} 不存在`);
+    }
+    const validTypes: BatchOperationType[] = ['priority', 'assign', 'exception_set', 'exception_revoke'];
+    if (!validTypes.includes(bo.operationType)) {
+      warnings.push(`批量操作 ${bo.batchOperationId} 类型异常「${bo.operationType}」`);
+    }
+  }
+
   return { fixed, warnings };
 }
 
@@ -371,8 +391,6 @@ function saveDatabase(db: Database): void {
     console.error('Error saving database:', error);
   }
 }
-
-let db: Database = loadDatabase();
 
 export function toPublicUser(user: User): PublicUser {
   return {
@@ -878,16 +896,92 @@ export function persist(): void {
   saveDatabase(db);
 }
 
-const batchIdempotencyKey = new Map<string, BatchOperationResult>();
+const batchIdempotencyCache = new Map<string, BatchOperationResult>();
 
-function getIdempotentResult(batchOperationId: string | undefined): BatchOperationResult | null {
-  if (!batchOperationId) return null;
-  return batchIdempotencyKey.get(batchOperationId) || null;
+function rebuildBatchCacheFromDb(dbInstance: Database): void {
+  batchIdempotencyCache.clear();
+  for (const persisted of dbInstance.batchOperations) {
+    const result: BatchOperationResult = {
+      batchOperationId: persisted.batchOperationId,
+      total: persisted.total,
+      succeeded: persisted.succeeded,
+      failed: persisted.failed,
+      results: persisted.results,
+    };
+    batchIdempotencyCache.set(persisted.batchOperationId, result);
+  }
+  console.log(`[Batch Idempotency] 从 db.json 重建缓存，共 ${dbInstance.batchOperations.length} 条批量操作记录`);
 }
 
-function saveIdempotentResult(batchOperationId: string | undefined, result: BatchOperationResult): void {
-  if (!batchOperationId) return;
-  batchIdempotencyKey.set(batchOperationId, result);
+let db: Database = loadDatabase();
+rebuildBatchCacheFromDb(db);
+
+function getIdempotentResult(batchOperationId: string | undefined): { result: BatchOperationResult; isReplayed: boolean } | null {
+  if (!batchOperationId) return null;
+  const fromCache = batchIdempotencyCache.get(batchOperationId);
+  if (fromCache) {
+    return { result: { ...fromCache, isReplayed: true }, isReplayed: true };
+  }
+  const fromDb = db.batchOperations.find((bo) => bo.batchOperationId === batchOperationId);
+  if (fromDb) {
+    const result: BatchOperationResult = {
+      batchOperationId: fromDb.batchOperationId,
+      total: fromDb.total,
+      succeeded: fromDb.succeeded,
+      failed: fromDb.failed,
+      results: fromDb.results,
+      isReplayed: true,
+    };
+    batchIdempotencyCache.set(batchOperationId, result);
+    return { result, isReplayed: true };
+  }
+  return null;
+}
+
+function persistBatchOperation(
+  operationType: BatchOperationType,
+  operatorId: string,
+  requestBody: Record<string, unknown>,
+  result: BatchOperationResult
+): void {
+  const operator = db.users.find((u) => u.id === operatorId);
+  const persisted: PersistedBatchOperation = {
+    id: generateId(),
+    batchOperationId: result.batchOperationId,
+    operationType,
+    operatorId,
+    operatorName: operator?.name,
+    createdAt: new Date().toISOString(),
+    requestBody,
+    total: result.total,
+    succeeded: result.succeeded,
+    failed: result.failed,
+    results: result.results.map((r) => ({
+      ticketId: r.ticketId,
+      success: r.success,
+      error: r.error,
+      failureType: r.failureType,
+    })),
+  };
+  db.batchOperations.push(persisted);
+  batchIdempotencyCache.set(result.batchOperationId, result);
+  saveDatabase(db);
+}
+
+function classifyFailure(error: string): BatchFailureType {
+  if (error.includes('权限') || error.includes('只有管理员') || error.includes('只有')) {
+    return 'permission_denied';
+  }
+  if (error.includes('已完成') || error.includes('状态') || error.includes('等待配件')) {
+    return 'status_invalid';
+  }
+  if (error.includes('修改') && error.includes('刷新')) {
+    return 'version_conflict';
+  }
+  if (error.includes('不存在')) {
+    return 'not_found';
+  }
+  return 'validation_error';
 }
 
 function checkVersionConflict(ticketId: string, expectedVersions: Record<string, number> | undefined): string | null {
@@ -900,6 +994,13 @@ function checkVersionConflict(ticketId: string, expectedVersions: Record<string,
   return null;
 }
 
+function hasDuplicateBatchTimeline(ticketId: string, batchOperationId: string, eventType: string): boolean {
+  const recent = db.timelineEvents
+    .filter((e) => e.ticketId === ticketId && e.type === eventType)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return recent.some((e) => e.content.includes(batchOperationId));
+}
+
 export function batchChangePriority(
   ticketIds: string[],
   priorityId: string,
@@ -908,38 +1009,46 @@ export function batchChangePriority(
   expectedVersions?: Record<string, number>,
   batchOperationId?: string
 ): BatchOperationResult {
-  const cached = getIdempotentResult(batchOperationId);
-  if (cached) return cached;
+  const idempotent = getIdempotentResult(batchOperationId);
+  if (idempotent) {
+    return idempotent.result;
+  }
 
   const priority = db.priorities.find((p) => p.id === priorityId);
+  const operator = db.users.find((u) => u.id === operatorId);
   const results: BatchResultItem[] = [];
+  const finalBatchId = batchOperationId || generateId();
 
   for (const ticketId of ticketIds) {
     const ticket = db.tickets.find((t) => t.id === ticketId);
     if (!ticket) {
-      results.push({ ticketId, success: false, error: '工单不存在' });
+      results.push({ ticketId, success: false, error: '工单不存在', failureType: 'not_found' });
       continue;
     }
 
     if (ticket.status === 'completed') {
-      results.push({ ticketId, success: false, error: '已完成的工单不能修改优先级，请先重新打开' });
+      results.push({ ticketId, success: false, error: '已完成的工单不能修改优先级，请先重新打开', failureType: 'status_invalid' });
       continue;
     }
 
     const conflict = checkVersionConflict(ticketId, expectedVersions);
     if (conflict) {
-      results.push({ ticketId, success: false, error: conflict });
+      results.push({ ticketId, success: false, error: conflict, failureType: 'version_conflict' });
       continue;
     }
 
     if (!priority) {
-      results.push({ ticketId, success: false, error: '目标优先级不存在' });
+      results.push({ ticketId, success: false, error: '目标优先级不存在', failureType: 'validation_error' });
       continue;
     }
 
-    const operator = db.users.find((u) => u.id === operatorId);
     if (!operator || operator.role !== 'admin') {
-      results.push({ ticketId, success: false, error: '只有管理员可以修改优先级' });
+      results.push({ ticketId, success: false, error: '只有管理员可以修改优先级', failureType: 'permission_denied' });
+      continue;
+    }
+
+    if (hasDuplicateBatchTimeline(ticketId, finalBatchId, 'batch_priority_changed')) {
+      results.push({ ticketId, success: false, error: '该批量操作已在时间线中存在，防止重复写入', failureType: 'validation_error' });
       continue;
     }
 
@@ -954,7 +1063,7 @@ export function batchChangePriority(
       ticketId,
       type: 'batch_priority_changed',
       userId: operatorId,
-      content: `${operatorName} 批量修改优先级为「${priority.name}」，原因：${reason.trim()}`,
+      content: `${operatorName} 批量修改优先级为「${priority.name}」，原因：${reason.trim()}（batchId: ${finalBatchId}）`,
       createdAt: now,
     });
 
@@ -964,13 +1073,15 @@ export function batchChangePriority(
   saveDatabase(db);
 
   const result: BatchOperationResult = {
-    batchOperationId: batchOperationId || generateId(),
+    batchOperationId: finalBatchId,
     total: ticketIds.length,
     succeeded: results.filter((r) => r.success).length,
     failed: results.filter((r) => !r.success).length,
     results,
+    isReplayed: false,
   };
-  saveIdempotentResult(batchOperationId, result);
+
+  persistBatchOperation('priority', operatorId, { ticketIds, priorityId, reason, expectedVersions }, result);
   return result;
 }
 
@@ -982,48 +1093,56 @@ export function batchChangeAssignee(
   expectedVersions?: Record<string, number>,
   batchOperationId?: string
 ): BatchOperationResult {
-  const cached = getIdempotentResult(batchOperationId);
-  if (cached) return cached;
+  const idempotent = getIdempotentResult(batchOperationId);
+  if (idempotent) {
+    return idempotent.result;
+  }
 
   const assignee = db.users.find((u) => u.id === assigneeId);
   const operator = db.users.find((u) => u.id === operatorId);
   const results: BatchResultItem[] = [];
+  const finalBatchId = batchOperationId || generateId();
 
   for (const ticketId of ticketIds) {
     const ticket = db.tickets.find((t) => t.id === ticketId);
     if (!ticket) {
-      results.push({ ticketId, success: false, error: '工单不存在' });
+      results.push({ ticketId, success: false, error: '工单不存在', failureType: 'not_found' });
       continue;
     }
 
     if (ticket.status === 'completed') {
-      results.push({ ticketId, success: false, error: '已完成的工单不能派工，请先重新打开' });
+      results.push({ ticketId, success: false, error: '已完成的工单不能派工，请先重新打开', failureType: 'status_invalid' });
       continue;
     }
 
     if (ticket.status === 'waiting_parts') {
-      results.push({ ticketId, success: false, error: '「等待配件」状态的工单不允许批量派工' });
+      results.push({ ticketId, success: false, error: '「等待配件」状态的工单不允许批量派工', failureType: 'status_invalid' });
       continue;
     }
 
     if (ticket.status !== 'pending' && ticket.status !== 'reopened' && ticket.status !== 'processing') {
-      results.push({ ticketId, success: false, error: `当前状态「${ticket.status}」不允许批量派工` });
+      results.push({ ticketId, success: false, error: `当前状态「${ticket.status}」不允许批量派工`, failureType: 'status_invalid' });
       continue;
     }
 
     const conflict = checkVersionConflict(ticketId, expectedVersions);
     if (conflict) {
-      results.push({ ticketId, success: false, error: conflict });
+      results.push({ ticketId, success: false, error: conflict, failureType: 'version_conflict' });
       continue;
     }
 
     if (!assignee || (assignee.role !== 'technician' && assignee.role !== 'admin')) {
-      results.push({ ticketId, success: false, error: '处理人必须是技术员或管理员' });
+      results.push({ ticketId, success: false, error: '处理人必须是技术员或管理员', failureType: 'validation_error' });
       continue;
     }
 
     if (!operator || (operator.role !== 'admin' && operator.role !== 'technician')) {
-      results.push({ ticketId, success: false, error: '只有管理员或技术员可以批量派工' });
+      results.push({ ticketId, success: false, error: '只有管理员或技术员可以批量派工', failureType: 'permission_denied' });
+      continue;
+    }
+
+    if (hasDuplicateBatchTimeline(ticketId, finalBatchId, 'batch_assignee_changed')) {
+      results.push({ ticketId, success: false, error: '该批量操作已在时间线中存在，防止重复写入', failureType: 'validation_error' });
       continue;
     }
 
@@ -1042,7 +1161,7 @@ export function batchChangeAssignee(
       ticketId,
       type: 'batch_assignee_changed',
       userId: operatorId,
-      content: `${operatorName} 批量派工给 ${assignee.name}，原因：${reason.trim()}${oldStatus !== ticket.status ? `（状态从 ${oldStatus} 变更为 processing）` : ''}`,
+      content: `${operatorName} 批量派工给 ${assignee.name}，原因：${reason.trim()}${oldStatus !== ticket.status ? `（状态从 ${oldStatus} 变更为 processing）` : ''}（batchId: ${finalBatchId}）`,
       createdAt: now,
     });
 
@@ -1052,13 +1171,15 @@ export function batchChangeAssignee(
   saveDatabase(db);
 
   const result: BatchOperationResult = {
-    batchOperationId: batchOperationId || generateId(),
+    batchOperationId: finalBatchId,
     total: ticketIds.length,
     succeeded: results.filter((r) => r.success).length,
     failed: results.filter((r) => !r.success).length,
     results,
+    isReplayed: false,
   };
-  saveIdempotentResult(batchOperationId, result);
+
+  persistBatchOperation('assign', operatorId, { ticketIds, assigneeId, reason, expectedVersions }, result);
   return result;
 }
 
@@ -1071,58 +1192,66 @@ export function batchSetEscalationException(
   expectedVersions?: Record<string, number>,
   batchOperationId?: string
 ): BatchOperationResult {
-  const cached = getIdempotentResult(batchOperationId);
-  if (cached) return cached;
+  const idempotent = getIdempotentResult(batchOperationId);
+  if (idempotent) {
+    return idempotent.result;
+  }
 
   const results: BatchResultItem[] = [];
   const operator = db.users.find((u) => u.id === operatorId);
+  const finalBatchId = batchOperationId || generateId();
 
   for (const ticketId of ticketIds) {
     const ticket = db.tickets.find((t) => t.id === ticketId);
     if (!ticket) {
-      results.push({ ticketId, success: false, error: '工单不存在' });
+      results.push({ ticketId, success: false, error: '工单不存在', failureType: 'not_found' });
       continue;
     }
 
     if (ticket.status === 'completed') {
-      results.push({ ticketId, success: false, error: '已完成的工单不能设置催办例外' });
+      results.push({ ticketId, success: false, error: '已完成的工单不能设置催办例外', failureType: 'status_invalid' });
       continue;
     }
 
     const conflict = checkVersionConflict(ticketId, expectedVersions);
     if (conflict) {
-      results.push({ ticketId, success: false, error: conflict });
+      results.push({ ticketId, success: false, error: conflict, failureType: 'version_conflict' });
       continue;
     }
 
     if (!operator || operator.role !== 'admin') {
-      results.push({ ticketId, success: false, error: '只有管理员可以设置催办例外' });
+      results.push({ ticketId, success: false, error: '只有管理员可以设置催办例外', failureType: 'permission_denied' });
       continue;
     }
 
     if (!reason.trim()) {
-      results.push({ ticketId, success: false, error: '必须填写设置催办例外的原因' });
+      results.push({ ticketId, success: false, error: '必须填写设置催办例外的原因', failureType: 'validation_error' });
       continue;
     }
 
     if (!deadline) {
-      results.push({ ticketId, success: false, error: '必须设置截止时间' });
+      results.push({ ticketId, success: false, error: '必须设置截止时间', failureType: 'validation_error' });
       continue;
     }
 
     const deadlineTime = new Date(deadline).getTime();
     if (isNaN(deadlineTime)) {
-      results.push({ ticketId, success: false, error: '截止时间格式无效' });
+      results.push({ ticketId, success: false, error: '截止时间格式无效', failureType: 'validation_error' });
       continue;
     }
     if (deadlineTime <= Date.now()) {
-      results.push({ ticketId, success: false, error: '截止时间必须晚于当前时间' });
+      results.push({ ticketId, success: false, error: '截止时间必须晚于当前时间', failureType: 'validation_error' });
       continue;
     }
 
     const active = getActiveEscalationException(ticketId);
     if (active) {
-      results.push({ ticketId, success: false, error: '该工单已有生效中的催办例外，请先撤销后再设置' });
+      results.push({ ticketId, success: false, error: '该工单已有生效中的催办例外，请先撤销后再设置', failureType: 'validation_error' });
+      continue;
+    }
+
+    if (hasDuplicateBatchTimeline(ticketId, finalBatchId, 'batch_exception_set')) {
+      results.push({ ticketId, success: false, error: '该批量操作已在时间线中存在，防止重复写入', failureType: 'validation_error' });
       continue;
     }
 
@@ -1165,7 +1294,7 @@ export function batchSetEscalationException(
       ticketId,
       type: 'batch_exception_set',
       userId: operatorId,
-      content: `${operatorName} 批量设置${typeLabel}例外，原因：${reason.trim()}，截止时间：${new Date(deadline).toLocaleString('zh-CN', { hour12: false })}`,
+      content: `${operatorName} 批量设置${typeLabel}例外，原因：${reason.trim()}，截止时间：${new Date(deadline).toLocaleString('zh-CN', { hour12: false })}（batchId: ${finalBatchId}）`,
       createdAt: now,
     });
 
@@ -1175,13 +1304,15 @@ export function batchSetEscalationException(
   saveDatabase(db);
 
   const result: BatchOperationResult = {
-    batchOperationId: batchOperationId || generateId(),
+    batchOperationId: finalBatchId,
     total: ticketIds.length,
     succeeded: results.filter((r) => r.success).length,
     failed: results.filter((r) => !r.success).length,
     results,
+    isReplayed: false,
   };
-  saveIdempotentResult(batchOperationId, result);
+
+  persistBatchOperation('exception_set', operatorId, { ticketIds, type, reason, deadline, expectedVersions }, result);
   return result;
 }
 
@@ -1192,38 +1323,46 @@ export function batchRevokeEscalationException(
   expectedVersions?: Record<string, number>,
   batchOperationId?: string
 ): BatchOperationResult {
-  const cached = getIdempotentResult(batchOperationId);
-  if (cached) return cached;
+  const idempotent = getIdempotentResult(batchOperationId);
+  if (idempotent) {
+    return idempotent.result;
+  }
 
   const results: BatchResultItem[] = [];
   const operator = db.users.find((u) => u.id === operatorId);
+  const finalBatchId = batchOperationId || generateId();
 
   for (const ticketId of ticketIds) {
     const ticket = db.tickets.find((t) => t.id === ticketId);
     if (!ticket) {
-      results.push({ ticketId, success: false, error: '工单不存在' });
+      results.push({ ticketId, success: false, error: '工单不存在', failureType: 'not_found' });
       continue;
     }
 
     const conflict = checkVersionConflict(ticketId, expectedVersions);
     if (conflict) {
-      results.push({ ticketId, success: false, error: conflict });
+      results.push({ ticketId, success: false, error: conflict, failureType: 'version_conflict' });
       continue;
     }
 
     if (!operator || operator.role !== 'admin') {
-      results.push({ ticketId, success: false, error: '只有管理员可以撤销催办例外' });
+      results.push({ ticketId, success: false, error: '只有管理员可以撤销催办例外', failureType: 'permission_denied' });
       continue;
     }
 
     if (!reason.trim()) {
-      results.push({ ticketId, success: false, error: '必须填写撤销催办例外的原因' });
+      results.push({ ticketId, success: false, error: '必须填写撤销催办例外的原因', failureType: 'validation_error' });
       continue;
     }
 
     const active = getActiveEscalationException(ticketId);
     if (!active) {
-      results.push({ ticketId, success: false, error: '该工单没有生效中的催办例外' });
+      results.push({ ticketId, success: false, error: '该工单没有生效中的催办例外', failureType: 'validation_error' });
+      continue;
+    }
+
+    if (hasDuplicateBatchTimeline(ticketId, finalBatchId, 'batch_exception_revoked')) {
+      results.push({ ticketId, success: false, error: '该批量操作已在时间线中存在，防止重复写入', failureType: 'validation_error' });
       continue;
     }
 
@@ -1243,7 +1382,7 @@ export function batchRevokeEscalationException(
       ticketId,
       type: 'batch_exception_revoked',
       userId: operatorId,
-      content: `${operatorName} 批量撤销${typeLabel}例外，原因：${reason.trim()}（原例外原因：${active.reason}，截止时间：${new Date(active.deadline).toLocaleString('zh-CN', { hour12: false })}），系统将重新评估是否触发催办`,
+      content: `${operatorName} 批量撤销${typeLabel}例外，原因：${reason.trim()}（原例外原因：${active.reason}，截止时间：${new Date(active.deadline).toLocaleString('zh-CN', { hour12: false })}），系统将重新评估是否触发催办（batchId: ${finalBatchId}）`,
       createdAt: now,
     });
 
@@ -1253,12 +1392,52 @@ export function batchRevokeEscalationException(
   saveDatabase(db);
 
   const result: BatchOperationResult = {
-    batchOperationId: batchOperationId || generateId(),
+    batchOperationId: finalBatchId,
     total: ticketIds.length,
     succeeded: results.filter((r) => r.success).length,
     failed: results.filter((r) => !r.success).length,
     results,
+    isReplayed: false,
   };
-  saveIdempotentResult(batchOperationId, result);
+
+  persistBatchOperation('exception_revoke', operatorId, { ticketIds, reason, expectedVersions }, result);
   return result;
+}
+
+export function getBatchOperations(operatorId?: string): PersistedBatchOperation[] {
+  let ops = [...db.batchOperations].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+  if (operatorId) {
+    ops = ops.filter((op) => op.operatorId === operatorId);
+  }
+  return ops.map((op) => ({
+    ...op,
+    results: op.results.map((r) => {
+      const ticket = db.tickets.find((t) => t.id === r.ticketId);
+      return {
+        ...r,
+        ticket: ticket ? enrichTicket(ticket) : undefined,
+      };
+    }),
+  }));
+}
+
+export function getBatchOperationByBatchId(batchOperationId: string): PersistedBatchOperation | null {
+  const op = db.batchOperations.find((bo) => bo.batchOperationId === batchOperationId);
+  if (!op) return null;
+  return {
+    ...op,
+    results: op.results.map((r) => {
+      const ticket = db.tickets.find((t) => t.id === r.ticketId);
+      return {
+        ...r,
+        ticket: ticket ? enrichTicket(ticket) : undefined,
+      };
+    }),
+  };
+}
+
+export function reloadBatchCache(): void {
+  rebuildBatchCacheFromDb(db);
 }

@@ -1,7 +1,7 @@
 import { Router, type Response } from 'express';
-import { getTickets, getTechnicians, getTimelineEvents, getEscalationExceptionsByTicket } from '../data/store.js';
+import { getTickets, getTechnicians, getTimelineEvents, getEscalationExceptionsByTicket, getBatchOperations } from '../data/store.js';
 import { authMiddleware, requireRoles, type AuthRequest } from '../middleware/auth.js';
-import { STATUS_LABELS } from '../../shared/types.js';
+import { STATUS_LABELS, BATCH_OPERATION_TYPE_LABELS, BATCH_FAILURE_TYPE_LABELS } from '../../shared/types.js';
 
 const router = Router();
 
@@ -116,6 +116,59 @@ router.get('/tickets', authMiddleware, requireRoles('admin'), (req: AuthRequest,
 
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''tickets_${Date.now()}.csv`);
+  res.send(bom + csvContent);
+});
+
+router.get('/batch-operations', authMiddleware, requireRoles('admin'), (req: AuthRequest, res: Response): void => {
+  const operations = getBatchOperations();
+  const { format = 'csv' } = req.query;
+
+  const buildBatchRow = (op: ReturnType<typeof getBatchOperations>[0], item: typeof op.results[0]) => ({
+    批量操作ID: op.batchOperationId,
+    操作类型: BATCH_OPERATION_TYPE_LABELS[op.operationType] || op.operationType,
+    操作人: op.operatorName || op.operatorId,
+    操作时间: new Date(op.createdAt).toLocaleString('zh-CN', { hour12: false }),
+    工单ID: item.ticketId,
+    工单描述: item.ticket?.description || '',
+    设备名称: item.ticket?.asset?.name || '',
+    处理结果: item.success ? '成功' : '失败',
+    失败类型: item.failureType ? (BATCH_FAILURE_TYPE_LABELS[item.failureType] || item.failureType) : '',
+    失败原因: item.error || '',
+    操作后优先级: item.ticket?.priority?.name || '',
+    操作后处理人: item.ticket?.assignee?.name || '',
+    操作后状态: item.ticket ? (STATUS_LABELS[item.ticket.status] || item.ticket.status) : '',
+  });
+
+  const rows: ReturnType<typeof buildBatchRow>[] = [];
+  for (const op of operations) {
+    for (const item of op.results) {
+      rows.push(buildBatchRow(op, item));
+    }
+  }
+
+  if (format === 'json') {
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''batch_operations_${Date.now()}.json`);
+    res.json(rows);
+    return;
+  }
+
+  const sampleRow = rows.length > 0 ? rows[0] : null;
+  const headers = sampleRow ? Object.keys(sampleRow) : [
+    '批量操作ID', '操作类型', '操作人', '操作时间', '工单ID', '工单描述',
+    '设备名称', '处理结果', '失败类型', '失败原因',
+    '操作后优先级', '操作后处理人', '操作后状态',
+  ];
+
+  const csvRows = rows.map((row) => {
+    return headers.map((h) => row[h as keyof typeof row]);
+  });
+
+  const csvContent = [headers, ...csvRows].map((row) => row.map(escapeCsv).join(',')).join('\n');
+  const bom = '\uFEFF';
+
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''batch_operations_${Date.now()}.csv`);
   res.send(bom + csvContent);
 });
 

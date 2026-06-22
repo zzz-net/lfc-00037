@@ -119,6 +119,7 @@ export interface Database {
   timelineEvents: TimelineEvent[];
   escalationRecords: EscalationRecord[];
   escalationExceptions: EscalationException[];
+  batchOperations: PersistedBatchOperation[];
 }
 
 export interface TicketFilters {
@@ -168,11 +169,45 @@ export const STATUS_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
   reopened: ['processing', 'waiting_parts', 'paused', 'completed'],
 };
 
+export type BatchFailureType = 'permission_denied' | 'status_invalid' | 'version_conflict' | 'validation_error' | 'not_found';
+
+export const BATCH_FAILURE_TYPE_LABELS: Record<BatchFailureType, string> = {
+  permission_denied: '权限不足',
+  status_invalid: '状态不允许',
+  version_conflict: '并发更新冲突',
+  validation_error: '校验失败',
+  not_found: '工单不存在',
+};
+
 export interface BatchResultItem {
   ticketId: string;
   success: boolean;
   error?: string;
+  failureType?: BatchFailureType;
   ticket?: Ticket;
+}
+
+export type BatchOperationType = 'priority' | 'assign' | 'exception_set' | 'exception_revoke';
+
+export const BATCH_OPERATION_TYPE_LABELS: Record<BatchOperationType, string> = {
+  priority: '批量修改优先级',
+  assign: '批量派工',
+  exception_set: '批量设置催办例外',
+  exception_revoke: '批量撤销催办例外',
+};
+
+export interface PersistedBatchOperation {
+  id: string;
+  batchOperationId: string;
+  operationType: BatchOperationType;
+  operatorId: string;
+  operatorName?: string;
+  createdAt: string;
+  requestBody: Record<string, unknown>;
+  total: number;
+  succeeded: number;
+  failed: number;
+  results: BatchResultItem[];
 }
 
 export interface BatchOperationResult {
@@ -181,6 +216,7 @@ export interface BatchOperationResult {
   succeeded: number;
   failed: number;
   results: BatchResultItem[];
+  isReplayed?: boolean;
 }
 
 export interface BatchPriorityRequest {

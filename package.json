@@ -12,7 +12,9 @@
     "server:dev": "nodemon",
     "dev": "concurrently \"npm run client:dev\" \"npm run server:dev\"",
     "validate": "tsx scripts/validate.ts",
-    "test:batch": "tsx scripts/test-batch-operations.ts"
+    "test:batch": "tsx scripts/test-batch-operations.ts",
+    "test:batch:v2": "tsx scripts/test-batch-idempotency-v2.ts",
+    "test:batch:v2:run": "tsx scripts/run-batch-tests-v2.ts"
   },
   "dependencies": {
     "clsx": "^2.1.1",

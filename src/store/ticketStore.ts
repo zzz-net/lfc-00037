@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Ticket, TicketFilters, TimelineEvent, TicketStatus, EscalationRecord, EscalationException, BatchOperationResult, EscalationExceptionType } from '../../shared/types';
+import type { Ticket, TicketFilters, TimelineEvent, TicketStatus, EscalationRecord, EscalationException, BatchOperationResult, EscalationExceptionType, PersistedBatchOperation } from '../../shared/types';
 import {
   getTickets as apiGetTickets,
   getTicketDetail as apiGetTicketDetail,
@@ -14,6 +14,8 @@ import {
   batchChangeAssignee as apiBatchChangeAssignee,
   batchSetEscalationException as apiBatchSetException,
   batchRevokeEscalationException as apiBatchRevokeException,
+  getBatchOperations as apiGetBatchOperations,
+  getBatchOperationDetail as apiGetBatchOperationDetail,
 } from '../utils/api';
 
 interface TicketState {
@@ -28,6 +30,9 @@ interface TicketState {
   isLoading: boolean;
   error: string | null;
   lastBatchResult: BatchOperationResult | null;
+  batchOperations: PersistedBatchOperation[];
+  batchOperationsTotal: number;
+  currentBatchOperation: PersistedBatchOperation | null;
   fetchTickets: (filters?: TicketFilters) => Promise<void>;
   fetchTicketDetail: (id: string) => Promise<void>;
   createTicket: (data: {
@@ -51,6 +56,9 @@ interface TicketState {
   batchChangeAssignee: (ticketIds: string[], assigneeId: string, reason: string) => Promise<BatchOperationResult>;
   batchSetException: (ticketIds: string[], type: EscalationExceptionType, reason: string, deadline: string) => Promise<BatchOperationResult>;
   batchRevokeException: (ticketIds: string[], reason: string) => Promise<BatchOperationResult>;
+  fetchBatchOperations: () => Promise<void>;
+  fetchBatchOperationDetail: (batchOperationId: string) => Promise<void>;
+  clearCurrentBatchOperation: () => void;
   setFilters: (filters: TicketFilters) => void;
   toggleSelectTicket: (ticketId: string) => void;
   selectAllTickets: (ticketIds: string[]) => void;
@@ -82,6 +90,9 @@ export const useTicketStore = create<TicketState>((set, get) => ({
   isLoading: false,
   error: null,
   lastBatchResult: null,
+  batchOperations: [],
+  batchOperationsTotal: 0,
+  currentBatchOperation: null,
 
   fetchTickets: async (filters) => {
     const mergedFilters = { ...get().filters, ...filters };
@@ -357,5 +368,44 @@ export const useTicketStore = create<TicketState>((set, get) => ({
       });
       throw err;
     }
+  },
+
+  fetchBatchOperations: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const result = await apiGetBatchOperations();
+      set({
+        batchOperations: result.operations,
+        batchOperationsTotal: result.total,
+        isLoading: false,
+      });
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : '获取批量操作记录失败',
+        isLoading: false,
+      });
+      throw err;
+    }
+  },
+
+  fetchBatchOperationDetail: async (batchOperationId: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const result = await apiGetBatchOperationDetail(batchOperationId);
+      set({
+        currentBatchOperation: result.operation,
+        isLoading: false,
+      });
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : '获取批量操作详情失败',
+        isLoading: false,
+      });
+      throw err;
+    }
+  },
+
+  clearCurrentBatchOperation: () => {
+    set({ currentBatchOperation: null });
   },
 }));

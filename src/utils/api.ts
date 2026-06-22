@@ -10,6 +10,7 @@ import type {
   EscalationException,
   BatchOperationResult,
   EscalationExceptionType,
+  PersistedBatchOperation,
 } from '../../shared/types';
 
 const API_BASE = '/api';
@@ -251,4 +252,20 @@ export async function batchRevokeEscalationException(
     method: 'POST',
     body: JSON.stringify({ ticketIds, reason, expectedVersions, batchOperationId }),
   });
+}
+
+export async function getBatchOperations() {
+  return request<{ operations: PersistedBatchOperation[]; total: number }>('/tickets/batch/operations');
+}
+
+export async function getBatchOperationDetail(batchOperationId: string) {
+  return request<{ operation: PersistedBatchOperation }>(`/tickets/batch/operations/${batchOperationId}`);
+}
+
+export function buildBatchExportUrl(params: { format?: 'csv' | 'json' } = {}) {
+  const searchParams = new URLSearchParams();
+  if (params.format) searchParams.set('format', params.format);
+  const token = getAuthToken();
+  const query = searchParams.toString();
+  return `${API_BASE}/export/batch-operations${query ? `?${query}` : ''}${token ? (query ? '&' : '?') + `x-user-id=${token}` : ''}`;
 }

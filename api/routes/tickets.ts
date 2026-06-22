@@ -20,6 +20,8 @@ import {
   batchChangeAssignee,
   batchSetEscalationException,
   batchRevokeEscalationException,
+  getBatchOperations,
+  getBatchOperationByBatchId,
 } from '../data/store.js';
 import { authMiddleware, requireRoles, type AuthRequest } from '../middleware/auth.js';
 import { STATUS_TRANSITIONS, STATUS_LABELS } from '../../shared/types.js';
@@ -270,6 +272,21 @@ router.post('/batch/exception/revoke', requireRoles('admin'), (req: AuthRequest,
   persist();
   checkAllEscalations();
   res.json({ success: true, data: result });
+});
+
+// ===== 批量操作查询（管理员可见） =====
+router.get('/batch/operations', requireRoles('admin'), (req: AuthRequest, res: Response): void => {
+  const operations = getBatchOperations();
+  res.json({ success: true, data: { operations, total: operations.length } });
+});
+
+router.get('/batch/operations/:batchOperationId', requireRoles('admin'), (req: AuthRequest, res: Response): void => {
+  const operation = getBatchOperationByBatchId(req.params.batchOperationId);
+  if (!operation) {
+    res.status(404).json({ success: false, error: '批量操作记录不存在' });
+    return;
+  }
+  res.json({ success: true, data: { operation } });
 });
 
 router.post('/:id/note', (req: AuthRequest, res: Response): void => {
