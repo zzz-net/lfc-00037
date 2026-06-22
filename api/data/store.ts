@@ -10,6 +10,7 @@ import type {
   Ticket,
   TimelineEvent,
   PublicUser,
+  TicketStatus,
 } from '../../shared/types.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -167,11 +168,86 @@ function getInitialDatabase(): Database {
   };
 }
 
+const VALID_STATUSES: TicketStatus[] = ['pending', 'processing', 'waiting_parts', 'paused', 'completed', 'reopened'];
+
+function validateDatabase(db: Database): { fixed: number; warnings: string[] } {
+  let fixed = 0;
+  const warnings: string[] = [];
+
+  for (const ticket of db.tickets) {
+    if (!VALID_STATUSES.includes(ticket.status)) {
+      warnings.push(`工单 ${ticket.id} 状态异常「${ticket.status}」，已重置为 pending`);
+      ticket.status = 'pending';
+      fixed++;
+    }
+
+    if (ticket.status === 'completed' && !ticket.closedAt) {
+      ticket.closedAt = ticket.updatedAt;
+      warnings.push(`工单 ${ticket.id} 已完成但缺少关闭时间，已用更新时间填充`);
+      fixed++;
+    }
+
+    if (ticket.status !== 'completed' && ticket.closedAt) {
+      warnings.push(`工单 ${ticket.id} 状态为「${ticket.status}」但存在关闭时间，已清除`);
+      ticket.closedAt = undefined;
+      fixed++;
+    }
+
+    if (ticket.status === 'reopened' && !ticket.reopenReason) {
+      ticket.reopenReason = '（系统重建：原重新打开原因丢失）';
+      warnings.push(`工单 ${ticket.id} 重新打开但缺少原因，已填充默认文本`);
+      fixed++;
+    }
+
+    if (!db.assets.find((a) => a.id === ticket.assetId)) {
+      warnings.push(`工单 ${ticket.id} 引用的资产 ${ticket.assetId} 不存在`);
+    }
+
+    if (!db.priorities.find((p) => p.id === ticket.priorityId)) {
+      warnings.push(`工单 ${ticket.id} 引用的优先级 ${ticket.priorityId} 不存在`);
+    }
+
+    if (ticket.assigneeId && !db.users.find((u) => u.id === ticket.assigneeId)) {
+      warnings.push(`工单 ${ticket.id} 引用的处理人 ${ticket.assigneeId} 不存在，已清除`);
+      ticket.assigneeId = undefined;
+      fixed++;
+    }
+
+    if (!db.users.find((u) => u.id === ticket.submitterId)) {
+      warnings.push(`工单 ${ticket.id} 引用的提交人 ${ticket.submitterId} 不存在`);
+    }
+  }
+
+  const ticketIds = new Set(db.tickets.map((t) => t.id));
+  for (const event of db.timelineEvents) {
+    if (!ticketIds.has(event.ticketId)) {
+      warnings.push(`时间线事件 ${event.id} 引用的工单 ${event.ticketId} 不存在`);
+    }
+    if (!db.users.find((u) => u.id === event.userId)) {
+      warnings.push(`时间线事件 ${event.id} 引用的用户 ${event.userId} 不存在`);
+    }
+  }
+
+  return { fixed, warnings };
+}
+
 function loadDatabase(): Database {
   try {
     if (fs.existsSync(DB_PATH)) {
       const data = fs.readFileSync(DB_PATH, 'utf-8');
-      return JSON.parse(data) as Database;
+      const db = JSON.parse(data) as Database;
+      const result = validateDatabase(db);
+      if (result.fixed > 0 || result.warnings.length > 0) {
+        if (result.warnings.length > 0) {
+          console.warn('[DB Validation] 数据校验发现问题：');
+          result.warnings.forEach((w) => console.warn(`  - ${w}`));
+        }
+        if (result.fixed > 0) {
+          console.warn(`[DB Validation] 已自动修复 ${result.fixed} 项异常`);
+          saveDatabase(db);
+        }
+      }
+      return db;
     }
   } catch (error) {
     console.error('Error loading database, using initial data:', error);

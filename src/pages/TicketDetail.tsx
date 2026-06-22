@@ -120,7 +120,6 @@ export default function TicketDetail() {
   if (t.status === 'waiting_parts') {
     availableActions.push({ status: 'processing', label: '恢复处理', icon: Play, style: 'btn-primary' });
     availableActions.push({ status: 'paused', label: '暂停', icon: Pause, style: 'btn-secondary' });
-    if (user?.role === 'admin') availableActions.push({ status: 'completed', label: '完成', icon: CheckCircle2, style: 'btn-success' });
   }
   if (t.status === 'paused') {
     availableActions.push({ status: 'processing', label: '恢复处理', icon: Play, style: 'btn-primary' });
@@ -152,7 +151,7 @@ export default function TicketDetail() {
                 <h1 className="text-xl font-bold text-slate-900">{t.asset?.name || '未知设备'}</h1>
                 <p className="text-sm text-slate-500 font-mono">{t.asset?.code}</p>
               </div>
-              {canAssign && t.status === 'pending' && (
+              {canAssign && (t.status === 'pending' || t.status === 'reopened') && (
                 <button onClick={() => setAssignModalOpen(true)} className="btn-primary">
                   <UserCheck className="w-4 h-4" />
                   派工
@@ -239,23 +238,33 @@ export default function TicketDetail() {
             </div>
           )}
 
-          <div className="card p-6">
-            <h3 className="font-semibold text-slate-900 mb-4">添加备注</h3>
-            <div className="space-y-3">
-              <textarea
-                className="input resize-none h-24"
-                placeholder="输入备注内容..."
-                value={noteText}
-                onChange={(e) => setNoteText(e.target.value)}
-              />
-              <div className="flex justify-end">
-                <button onClick={handleAddNote} disabled={!noteText.trim()} className="btn-primary">
-                  <Send className="w-4 h-4" />
-                  发送备注
-                </button>
+          {t.status !== 'completed' && (
+            <div className="card p-6">
+              <h3 className="font-semibold text-slate-900 mb-4">添加备注</h3>
+              <div className="space-y-3">
+                <textarea
+                  className="input resize-none h-24"
+                  placeholder="输入备注内容..."
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
+                />
+                <div className="flex justify-end">
+                  <button onClick={handleAddNote} disabled={!noteText.trim()} className="btn-primary">
+                    <Send className="w-4 h-4" />
+                    发送备注
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          )}
+          {t.status === 'completed' && !canReopen && (
+            <div className="card p-6">
+              <div className="text-center py-4">
+                <p className="text-sm text-slate-500">工单已关闭，无法继续操作</p>
+                <p className="text-xs text-slate-400 mt-1">如需继续处理，请联系管理员重新打开</p>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="space-y-6">
@@ -273,13 +282,20 @@ export default function TicketDetail() {
                     {idx < timeline.length - 1 && (
                       <div className="absolute left-2 top-6 bottom-0 w-px bg-slate-200" />
                     )}
-                    <div className="absolute left-0 top-1 w-4 h-4 rounded-full bg-blue-500 border-4 border-blue-100" />
+                    <div className={`absolute left-0 top-1 w-4 h-4 rounded-full border-4 ${
+                      event.type === 'reopened' ? 'bg-orange-500 border-orange-100' :
+                      event.type === 'created' ? 'bg-green-500 border-green-100' :
+                      event.type === 'assigned' ? 'bg-indigo-500 border-indigo-100' :
+                      'bg-blue-500 border-blue-100'
+                    }`} />
                     <div className="bg-slate-50 rounded-lg p-3">
                       <div className="flex items-center justify-between mb-1">
                         <p className="text-sm font-medium text-slate-900">{event.user?.name || '系统'}</p>
                         <p className="text-xs text-slate-500">{formatDateTime(event.createdAt)}</p>
                       </div>
-                      <p className="text-sm text-slate-600">{event.content}</p>
+                      <p className={`text-sm ${event.type === 'reopened' ? 'text-orange-700 font-medium' : 'text-slate-600'}`}>
+                        {event.content}
+                      </p>
                     </div>
                   </div>
                 ))
@@ -295,15 +311,23 @@ export default function TicketDetail() {
             <ul className="space-y-2 text-xs text-slate-600">
               <li className="flex items-start gap-2">
                 <span className="text-amber-500">•</span>
-                「等待配件」状态需管理员权限才能直接完成
+                「等待配件」状态的工单不能直接完成，需先恢复为处理中
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-amber-500">•</span>
+                已完成的工单不能派工、备注或更新状态
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-amber-500">•</span>
+                只有管理员可重新打开已完成工单，且必须填写原因
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-amber-500">•</span>
+                重新打开后，方可继续派工、备注和状态变更
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-amber-500">•</span>
                 读者/馆员无权关闭工单
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-amber-500">•</span>
-                已完成工单需管理员重新打开，并填写原因
               </li>
             </ul>
           </div>

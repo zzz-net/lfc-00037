@@ -1,57 +1,155 @@
-# React + TypeScript + Vite
+# 设备报修管理系统
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+图书馆设备报修管理平台，支持工单全生命周期管理、状态流转控制、数据导出和跨重启数据持久化。
 
-Currently, two official plugins are available:
+## 快速启动
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+访问 `http://localhost:3001`，默认账号：
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+| 角色 | 用户名 | 密码 |
+|------|--------|------|
+| 管理员 | admin | admin123 |
+| 技术员 | tech1 | tech123 |
+| 读者/馆员 | reader1 | reader123 |
 
-export default tseslint.config({
-  extends: [
-    // other configs...
-    // Enable lint rules for React
-    reactX.configs['recommended-typescript'],
-    // Enable lint rules for React DOM
-    reactDom.configs.recommended,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+## 工单状态治理规则
+
+### 状态机与合法跳转
+
+```
+pending → processing
+processing → waiting_parts | paused | completed
+waiting_parts → processing | paused
+paused → processing
+completed → reopened
+reopened → processing | waiting_parts | paused | completed
+```
+
+### 关键约束
+
+1. **等待配件不能直接完成**：处于「等待配件」状态的工单，任何角色都不能直接标记为完成，必须先恢复为「处理中」或「已暂停」
+2. **已完成工单锁定**：已完成的工单不能派工、添加备注或变更状态（前端隐藏操作按钮，后端返回 400 错误）
+3. **管理员重新打开**：只有管理员可以重新打开已完成的工单，且必须填写重新打开原因
+4. **重新打开后恢复操作**：工单重新打开后，才允许继续派工、备注和状态变更
+5. **读者/馆员不可关闭**：读者/馆员角色无权关闭工单
+
+### 派工规则
+
+- 只有「待派工」和「重新打开」状态的工单可以派工
+- 已完成工单派工会被拦截，提示先由管理员重新打开
+
+## 导出功能
+
+### 导出字段
+
+CSV 和 JSON 导出使用统一字段，确保一致性：
+
+| 字段 | 说明 |
+|------|------|
+| 工单ID | 工单唯一标识 |
+| 设备名称 | 关联资产名称 |
+| 设备编号 | 资产编号 |
+| 设备类型 | 资产分类 |
+| 位置 | 故障位置 |
+| 问题描述 | 故障描述 |
+| 优先级 | 优先级名称 |
+| 状态 | 当前状态（中文） |
+| 报修人 | 提交人姓名 |
+| 处理人 | 指派处理人姓名 |
+| 创建时间 | 工单创建时间 |
+| 更新时间 | 最后更新时间 |
+| 关闭时间 | 完成时间 |
+| 重新打开原因 | 管理员填写的重新打开原因 |
+| 状态变更记录 | 完整状态变更时间线 |
+
+### 导出特性
+
+- CSV 包含 UTF-8 BOM 头，Excel 可直接打开无乱码
+- JSON 使用中文字段名，与 CSV 列头完全一致
+- 导出文件名使用 `filename*=UTF-8''` 编码，确保中文文件名兼容
+
+## 跨重启数据保障
+
+### 持久化机制
+
+- **筛选条件**：前端使用 localStorage 持久化，页面刷新不丢失
+- **优先级配置**：存储在 db.json，服务重启后保留
+- **工单与历史**：全部存储在 db.json，包含工单、时间线事件
+
+### 启动时数据校验
+
+服务启动时自动校验 db.json 数据完整性，自动修复以下异常：
+
+- 非法状态值 → 重置为 pending
+- 已完成但缺少关闭时间 → 用更新时间填充
+- 非完成状态但存在关闭时间 → 清除关闭时间
+- 重新打开但缺少原因 → 填充默认文本
+- 处理人引用不存在 → 清除处理人
+- 资产/优先级引用缺失 → 记录警告
+
+校验日志输出到控制台，格式：`[DB Validation] 数据校验发现问题：`
+
+## 验证与回归测试
+
+### 运行校验脚本
+
+```bash
+npm run validate
+```
+
+校验脚本覆盖以下场景：
+
+1. **状态跳转规则校验**：验证所有合法/非法状态跳转
+2. **数据库完整性校验**：检查 db.json 中数据引用完整性
+3. **跨重启持久化校验**：确认筛选条件、配置、历史数据持久化机制
+4. **导出一致性校验**：确认 CSV/JSON 字段对齐、BOM 头、中文字段
+5. **API 运行时拦截校验**（需服务运行中）：
+   - 已完成工单派工被拦截
+   - 已完成→处理中跳转被拦截
+   - 等待配件→完成跳转被拦截
+   - 读者关闭工单被拦截
+   - 无原因重新打开被拦截
+
+### 手动验收步骤
+
+1. **正常报修到关闭**：reader1 提交报修 → admin 派工 → tech1 处理 → 完成
+2. **管理员重新打开**：admin 重新打开已完成工单 → 填写原因 → 派工 → 再次处理
+3. **越权拦截**：
+   - reader1 尝试关闭工单 → 被拦截
+   - tech1 对已完成工单派工 → 被拦截
+   - 任何人从等待配件直接完成 → 被拦截
+4. **导出验证**：admin 导出 CSV/JSON → 用 Excel 打开 CSV 无乱码 → JSON 可被程序回读
+
+## 项目结构
+
+```
+├── api/                  # 后端 API
+│   ├── data/
+│   │   ├── db.json       # 数据存储
+│   │   └── store.ts      # 数据层（含启动校验）
+│   ├── middleware/
+│   │   └── auth.ts       # 认证中间件
+│   └── routes/
+│       ├── tickets.ts    # 工单路由（状态治理核心）
+│       ├── export.ts     # 导出路由
+│       ├── assets.ts     # 资产管理
+│       ├── auth.ts       # 认证路由
+│       └── priorities.ts # 优先级配置
+├── shared/
+│   └── types.ts          # 共享类型与常量（状态机定义）
+├── src/                  # 前端 React
+│   ├── pages/
+│   │   ├── TicketDetail.tsx  # 工单详情（操作面板）
+│   │   ├── TicketList.tsx    # 工单列表
+│   │   ├── ExportCenter.tsx  # 导出中心
+│   │   └── SubmitTicket.tsx  # 提交报修
+│   └── store/
+│       └── ticketStore.ts    # 工单状态管理（筛选持久化）
+└── scripts/
+    └── validate.ts       # 校验与回归测试脚本
 ```

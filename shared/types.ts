@@ -114,4 +114,13 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   admin: '管理员',
 };
 
-export const KANBAN_COLUMNS: TicketStatus[] = ['pending', 'processing', 'waiting_parts', 'paused', 'completed'];
+export const KANBAN_COLUMNS: TicketStatus[] = ['pending', 'processing', 'waiting_parts', 'paused', 'reopened', 'completed'];
+
+export const STATUS_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
+  pending: ['processing'],
+  processing: ['waiting_parts', 'paused', 'completed'],
+  waiting_parts: ['processing', 'paused'],
+  paused: ['processing'],
+  completed: ['reopened'],
+  reopened: ['processing', 'waiting_parts', 'paused', 'completed'],
+};

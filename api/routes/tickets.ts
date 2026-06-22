@@ -12,27 +12,10 @@ import {
   persist,
 } from '../data/store.js';
 import { authMiddleware, requireRoles, type AuthRequest } from '../middleware/auth.js';
+import { STATUS_TRANSITIONS, STATUS_LABELS } from '../../shared/types.js';
 import type { TicketStatus, TimelineEventType } from '../../shared/types.js';
 
 const router = Router();
-
-const STATUS_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
-  pending: ['processing'],
-  processing: ['waiting_parts', 'paused', 'completed'],
-  waiting_parts: ['processing', 'paused', 'completed'],
-  paused: ['processing'],
-  completed: ['reopened'],
-  reopened: ['processing', 'waiting_parts', 'paused', 'completed'],
-};
-
-const STATUS_LABELS: Record<TicketStatus, string> = {
-  pending: '待派工',
-  processing: '处理中',
-  waiting_parts: '等待配件',
-  paused: '已暂停',
-  completed: '已完成',
-  reopened: '重新打开',
-};
 
 router.use(authMiddleware);
 
@@ -143,6 +126,23 @@ router.post('/:id/assign', requireRoles('admin', 'technician'), (req: AuthReques
     res.status(404).json({ success: false, error: '工单不存在' });
     return;
   }
+
+  if (ticket.status === 'completed') {
+    res.status(400).json({
+      success: false,
+      error: '已完成的工单不能直接派工，请先由管理员重新打开并填写原因后再派工',
+    });
+    return;
+  }
+
+  if (ticket.status !== 'pending' && ticket.status !== 'reopened') {
+    res.status(400).json({
+      success: false,
+      error: `当前状态「${STATUS_LABELS[ticket.status]}」不允许派工，只有待派工或重新打开的工单可以派工`,
+    });
+    return;
+  }
+
   const { assigneeId, note } = req.body;
   if (!assigneeId) {
     res.status(400).json({ success: false, error: '请选择处理人' });
@@ -196,10 +196,10 @@ router.put('/:id/status', (req: AuthRequest, res: Response): void => {
     return;
   }
 
-  if (targetStatus === 'completed' && ticket.status === 'waiting_parts' && user.role !== 'admin') {
-    res.status(403).json({
+  if (targetStatus === 'completed' && ticket.status === 'waiting_parts') {
+    res.status(400).json({
       success: false,
-      error: '「等待配件」状态的工单需要管理员权限才能直接完成',
+      error: '「等待配件」状态的工单不能直接完成，请先恢复为「处理中」或「已暂停」后再完成',
     });
     return;
   }
@@ -255,6 +255,13 @@ router.post('/:id/note', (req: AuthRequest, res: Response): void => {
   const ticket = getTicketById(req.params.id);
   if (!ticket) {
     res.status(404).json({ success: false, error: '工单不存在' });
+    return;
+  }
+  if (ticket.status === 'completed') {
+    res.status(400).json({
+      success: false,
+      error: '已完成的工单不能添加备注，请先由管理员重新打开后再操作',
+    });
     return;
   }
   const { note } = req.body;
