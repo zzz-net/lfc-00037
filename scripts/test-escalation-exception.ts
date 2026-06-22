@@ -398,9 +398,9 @@ async function main() {
   printResult(allResults[allResults.length - 1]);
 
   // ─────────────────────────────────────────────────────
-  // 测试 6：重开后清除例外
+  // 测试 6：完成/重开后，有效期内的例外不被撤销，重开后自动恢复
   // ─────────────────────────────────────────────────────
-  console.log('\n▶ 测试 6：重开/完成后自动清除例外\n');
+  console.log('\n▶ 测试 6：完成/重开后，有效期内例外自动恢复（新语义）\n');
 
   // Complete the ticket with exception
   const completeRes6 = await api(`/tickets/${ticketId}/status`, {
@@ -408,27 +408,54 @@ async function main() {
     headers: adminHeaders,
     body: JSON.stringify({ status: 'completed', note: '完成测试' }),
   });
-  // Reopen
-  const reopenRes6 = await api(`/tickets/${ticketId}/status`, {
-    method: 'PUT',
-    headers: adminHeaders,
-    body: JSON.stringify({ status: 'reopened', reopenReason: '测试重开后例外清除' }),
-  });
-  const ticketAfterReopen = reopenRes6.data?.data?.ticket;
+  const afterComplete = completeRes6.data?.data?.ticket;
   allResults.push({
-    name: '测试6-1：重开后清除例外（escalationException=undefined）',
-    passed: reopenRes6.ok && !ticketAfterReopen?.escalationException,
-    details: !ticketAfterReopen?.escalationException ? '✓ 例外已清除' : '❌ 例外未清除',
+    name: '测试6-1：完成后，工单内嵌 escalationException 清除',
+    passed: completeRes6.ok && !afterComplete?.escalationException,
+    details: !afterComplete?.escalationException ? '✓ 已清除完成态缓存引用' : '❌ 未清除',
   });
   printResult(allResults[allResults.length - 1]);
 
-  // Verify in db.json the exception was revoked
-  const dbAfter6 = loadDb();
-  const excInDb6 = dbAfter6.escalationExceptions?.find((e: any) => e.ticketId === ticketId && !e.revokedAt);
+  // Verify in db.json exception NOT revoked (still effective record, only state cleared)
+  const dbAfter6Complete = loadDb();
+  const excInDb6Complete = dbAfter6Complete.escalationExceptions?.filter(
+    (e: any) => e.ticketId === ticketId
+  );
+  const stillActive = excInDb6Complete?.filter((e: any) => !e.revokedAt && new Date(e.deadline).getTime() > Date.now());
   allResults.push({
-    name: '测试6-2：db.json 中例外记录被标记为已撤销',
-    passed: !excInDb6,
-    details: !excInDb6 ? '✓ 无活跃例外记录' : '❌ 仍有未撤销的例外记录',
+    name: '测试6-2：db.json 中例外记录仍未被撤销（保留有效历史）',
+    passed: stillActive && stillActive.length > 0,
+    details: stillActive && stillActive.length > 0
+      ? `✓ 保留 ${stillActive.length} 条未撤销记录`
+      : '❌ 被错误撤销或丢失',
+  });
+  printResult(allResults[allResults.length - 1]);
+
+  // Reopen — exception should auto-restore
+  const reopenRes6 = await api(`/tickets/${ticketId}/status`, {
+    method: 'PUT',
+    headers: adminHeaders,
+    body: JSON.stringify({ status: 'reopened', reopenReason: '测试重开后例外恢复' }),
+  });
+  const ticketAfterReopen = reopenRes6.data?.data?.ticket;
+  allResults.push({
+    name: '测试6-3：重开后有效例外自动重新挂载（新行为）',
+    passed: reopenRes6.ok && !!ticketAfterReopen?.escalationException,
+    details: ticketAfterReopen?.escalationException
+      ? `✓ 已恢复 type=${ticketAfterReopen.escalationException.type}`
+      : '❌ 例外丢失未恢复',
+  });
+  printResult(allResults[allResults.length - 1]);
+
+  // And the exception record still has no revokedAt/revokedBy
+  const dbAfter6Reopen = loadDb();
+  const noRevokedBySystem = !(dbAfter6Reopen.escalationExceptions || []).some(
+    (e: any) => e.ticketId === ticketId && (e.revokedBy === 'system' || (e.revokedAt && e.revokedBy === undefined))
+  );
+  allResults.push({
+    name: '测试6-4：db.json 中无 revokedBy=system 脏数据',
+    passed: noRevokedBySystem,
+    details: noRevokedBySystem ? '✓ 干净数据' : '❌ 存在脏数据',
   });
   printResult(allResults[allResults.length - 1]);
 

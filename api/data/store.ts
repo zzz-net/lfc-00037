@@ -302,15 +302,25 @@ function validateDatabase(db: Database): { fixed: number; warnings: string[] } {
     if (!db.users.find((u) => u.id === exc.createdBy)) {
       warnings.push(`催办例外 ${exc.id} 引用的创建人 ${exc.createdBy} 不存在`);
     }
+    if (exc.revokedBy === 'system') {
+      exc.revokedBy = exc.createdBy;
+      warnings.push(`催办例外 ${exc.id} 撤销人原为 system（历史脏数据），已回退为创建人 ${exc.createdBy}`);
+      fixed++;
+    }
     if (exc.revokedBy && !db.users.find((u) => u.id === exc.revokedBy)) {
       warnings.push(`催办例外 ${exc.id} 引用的撤销人 ${exc.revokedBy} 不存在`);
     }
-    if (!exc.revokedAt && exc.deadline && new Date(exc.deadline).getTime() <= Date.now()) {
-      const ticket = db.tickets.find((t) => t.id === exc.ticketId);
+    const ticket = db.tickets.find((t) => t.id === exc.ticketId);
+    const isExpired = exc.deadline && new Date(exc.deadline).getTime() <= Date.now();
+    const isCompleted = ticket && ticket.status === 'completed';
+    if (!exc.revokedAt && (isExpired || isCompleted)) {
       if (ticket && ticket.escalationException?.id === exc.id) {
         ticket.escalationException = undefined;
         ticket.updatedAt = new Date().toISOString();
-        warnings.push(`催办例外 ${exc.id} 已过期（截止时间 ${exc.deadline}），已自动从工单 ${exc.ticketId} 清除`);
+        const reason = isExpired
+          ? `已过期（截止时间 ${exc.deadline}）`
+          : '工单已完成';
+        warnings.push(`催办例外 ${exc.id} ${reason}，已自动从工单 ${exc.ticketId} 清除`);
         fixed++;
       }
     }
@@ -443,7 +453,12 @@ function enrichTicket(ticket: Ticket): Ticket {
   const escalationOwner = ticket.escalationOwnerId
     ? db.users.find((u) => u.id === ticket.escalationOwnerId)
     : undefined;
-  const activeException = getActiveEscalationException(ticket.id);
+  const allExceptions = getEscalationExceptionsByTicket(ticket.id);
+  const activeException = ticket.status === 'completed'
+    ? null
+    : allExceptions.find(
+        (e) => !e.revokedAt && new Date(e.deadline).getTime() > Date.now()
+      ) || null;
   return {
     ...ticket,
     asset,
@@ -452,6 +467,7 @@ function enrichTicket(ticket: Ticket): Ticket {
     assignee: assignee ? toPublicUser(assignee) : undefined,
     escalationOwner: escalationOwner ? toPublicUser(escalationOwner) : undefined,
     escalationException: activeException || undefined,
+    escalationExceptions: allExceptions,
   };
 }
 
@@ -494,12 +510,6 @@ export function updateTicket(id: string, updates: Partial<Ticket>): Ticket | und
       finalUpdates.escalationReason = undefined;
       finalUpdates.escalationOwnerId = undefined;
       finalUpdates.escalationException = undefined;
-      const active = getActiveEscalationException(id);
-      if (active) {
-        active.revokedBy = 'system';
-        active.revokedAt = finalUpdates.updatedAt;
-        active.revokeReason = '工单已完成，自动撤销催办例外';
-      }
     }
     if (finalUpdates.status === 'reopened') {
       finalUpdates.isEscalated = false;
@@ -507,12 +517,7 @@ export function updateTicket(id: string, updates: Partial<Ticket>): Ticket | und
       finalUpdates.escalationReason = undefined;
       finalUpdates.escalationOwnerId = undefined;
       finalUpdates.escalationException = undefined;
-      const active = getActiveEscalationException(id);
-      if (active) {
-        active.revokedBy = 'system';
-        active.revokedAt = finalUpdates.updatedAt;
-        active.revokeReason = '工单重新打开，自动撤销催办例外以重新评估催办';
-      }
+      finalUpdates.closedAt = undefined;
     }
     db.tickets[index] = {
       ...db.tickets[index],
@@ -787,7 +792,13 @@ export function checkAllEscalations(): number {
   let count = 0;
   const now = Date.now();
   for (const ticket of db.tickets) {
-    if (ticket.status === 'completed') continue;
+    if (ticket.status === 'completed') {
+      if (ticket.escalationException) {
+        ticket.escalationException = undefined;
+        ticket.updatedAt = new Date().toISOString();
+      }
+      continue;
+    }
     if (ticket.escalationException && !ticket.escalationException.revokedAt) {
       if (new Date(ticket.escalationException.deadline).getTime() <= now) {
         ticket.escalationException = undefined;

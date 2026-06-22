@@ -122,6 +122,11 @@ export default function TicketList() {
                       ) : (
                         <span className="text-xs text-slate-400">—</span>
                       )}
+                      {ticket.escalationExceptions && ticket.escalationExceptions.length > 0 && (
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          历史记录 {ticket.escalationExceptions.length} 条
+                        </p>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       {ticket.assignee ? (

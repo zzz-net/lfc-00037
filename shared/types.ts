@@ -69,6 +69,7 @@ export interface Ticket {
   escalationOwnerId?: string;
   escalationOwner?: PublicUser;
   escalationException?: EscalationException;
+  escalationExceptions?: EscalationException[];
 }
 
 export interface TimelineEvent {
