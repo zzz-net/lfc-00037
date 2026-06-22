@@ -1,6 +1,6 @@
 export type UserRole = 'reader' | 'technician' | 'admin';
 export type TicketStatus = 'pending' | 'processing' | 'waiting_parts' | 'paused' | 'completed' | 'reopened';
-export type TimelineEventType = 'created' | 'assigned' | 'status_changed' | 'note_added' | 'reopened' | 'escalated' | 'de_escalated' | 'escalation_exception_created' | 'escalation_exception_revoked';
+export type TimelineEventType = 'created' | 'assigned' | 'status_changed' | 'note_added' | 'reopened' | 'escalated' | 'de_escalated' | 'escalation_exception_created' | 'escalation_exception_revoked' | 'batch_priority_changed' | 'batch_assignee_changed' | 'batch_exception_set' | 'batch_exception_revoked';
 
 export type EscalationExceptionType = 'delay' | 'exempt';
 
@@ -70,6 +70,7 @@ export interface Ticket {
   escalationOwner?: PublicUser;
   escalationException?: EscalationException;
   escalationExceptions?: EscalationException[];
+  version: number;
 }
 
 export interface TimelineEvent {
@@ -166,3 +167,50 @@ export const STATUS_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
   completed: ['reopened'],
   reopened: ['processing', 'waiting_parts', 'paused', 'completed'],
 };
+
+export interface BatchResultItem {
+  ticketId: string;
+  success: boolean;
+  error?: string;
+  ticket?: Ticket;
+}
+
+export interface BatchOperationResult {
+  batchOperationId: string;
+  total: number;
+  succeeded: number;
+  failed: number;
+  results: BatchResultItem[];
+}
+
+export interface BatchPriorityRequest {
+  ticketIds: string[];
+  priorityId: string;
+  reason: string;
+  expectedVersions?: Record<string, number>;
+  batchOperationId?: string;
+}
+
+export interface BatchAssigneeRequest {
+  ticketIds: string[];
+  assigneeId: string;
+  reason: string;
+  expectedVersions?: Record<string, number>;
+  batchOperationId?: string;
+}
+
+export interface BatchSetExceptionRequest {
+  ticketIds: string[];
+  type: EscalationExceptionType;
+  reason: string;
+  deadline: string;
+  expectedVersions?: Record<string, number>;
+  batchOperationId?: string;
+}
+
+export interface BatchRevokeExceptionRequest {
+  ticketIds: string[];
+  reason: string;
+  expectedVersions?: Record<string, number>;
+  batchOperationId?: string;
+}

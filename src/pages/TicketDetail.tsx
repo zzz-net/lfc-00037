@@ -423,6 +423,10 @@ export default function TicketDetail() {
                       event.type === 'de_escalated' ? 'bg-purple-500 border-purple-100' :
                       event.type === 'escalation_exception_created' ? 'bg-amber-500 border-amber-100' :
                       event.type === 'escalation_exception_revoked' ? 'bg-teal-500 border-teal-100' :
+                      event.type === 'batch_priority_changed' ? 'bg-blue-500 border-blue-100' :
+                      event.type === 'batch_assignee_changed' ? 'bg-indigo-600 border-indigo-100' :
+                      event.type === 'batch_exception_set' ? 'bg-amber-600 border-amber-100' :
+                      event.type === 'batch_exception_revoked' ? 'bg-teal-600 border-teal-100' :
                       'bg-blue-500 border-blue-100'
                     }`} />
                     <div className={`rounded-lg p-3 ${
@@ -430,6 +434,10 @@ export default function TicketDetail() {
                       event.type === 'de_escalated' ? 'bg-purple-50 border border-purple-100' :
                       event.type === 'escalation_exception_created' ? 'bg-amber-50 border border-amber-100' :
                       event.type === 'escalation_exception_revoked' ? 'bg-teal-50 border border-teal-100' :
+                      event.type === 'batch_priority_changed' ? 'bg-blue-50 border border-blue-100' :
+                      event.type === 'batch_assignee_changed' ? 'bg-indigo-50 border border-indigo-100' :
+                      event.type === 'batch_exception_set' ? 'bg-amber-50 border border-amber-100' :
+                      event.type === 'batch_exception_revoked' ? 'bg-teal-50 border border-teal-100' :
                       'bg-slate-50'
                     }`}>
                       <div className="flex items-center justify-between mb-1">
@@ -442,6 +450,10 @@ export default function TicketDetail() {
                         event.type === 'de_escalated' ? 'text-purple-700 font-medium' :
                         event.type === 'escalation_exception_created' ? 'text-amber-700 font-medium' :
                         event.type === 'escalation_exception_revoked' ? 'text-teal-700 font-medium' :
+                        event.type === 'batch_priority_changed' ? 'text-blue-700 font-medium' :
+                        event.type === 'batch_assignee_changed' ? 'text-indigo-700 font-medium' :
+                        event.type === 'batch_exception_set' ? 'text-amber-700 font-medium' :
+                        event.type === 'batch_exception_revoked' ? 'text-teal-700 font-medium' :
                         'text-slate-600'
                       }`}>
                         {event.content}

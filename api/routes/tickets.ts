@@ -16,6 +16,10 @@ import {
   createEscalationException,
   revokeEscalationException,
   getEscalationExceptionsByTicket,
+  batchChangePriority,
+  batchChangeAssignee,
+  batchSetEscalationException,
+  batchRevokeEscalationException,
 } from '../data/store.js';
 import { authMiddleware, requireRoles, type AuthRequest } from '../middleware/auth.js';
 import { STATUS_TRANSITIONS, STATUS_LABELS } from '../../shared/types.js';
@@ -143,6 +147,129 @@ router.post('/', (req: AuthRequest, res: Response): void => {
   );
   persist();
   res.status(201).json({ success: true, data: { ticket } });
+});
+
+// ===== 批量操作（必须放在 /:id/* 路由之前，否则 batch 会被当作 :id 参数匹配） =====
+router.post('/batch/priority', requireRoles('admin'), (req: AuthRequest, res: Response): void => {
+  const { ticketIds, priorityId, reason, expectedVersions, batchOperationId } = req.body;
+  if (!Array.isArray(ticketIds) || ticketIds.length === 0) {
+    res.status(400).json({ success: false, error: '请选择要处理的工单' });
+    return;
+  }
+  if (!priorityId) {
+    res.status(400).json({ success: false, error: '请选择目标优先级' });
+    return;
+  }
+  if (!reason || !String(reason).trim()) {
+    res.status(400).json({ success: false, error: '必须填写操作原因' });
+    return;
+  }
+  const priorities = getPriorities();
+  if (!priorities.find((p) => p.id === priorityId)) {
+    res.status(400).json({ success: false, error: '选择的优先级不存在' });
+    return;
+  }
+  const user = req.user!;
+  const result = batchChangePriority(
+    ticketIds,
+    priorityId,
+    String(reason).trim(),
+    user.id,
+    expectedVersions as Record<string, number> | undefined,
+    batchOperationId as string | undefined
+  );
+  persist();
+  checkAllEscalations();
+  res.json({ success: true, data: result });
+});
+
+router.post('/batch/assign', requireRoles('admin', 'technician'), (req: AuthRequest, res: Response): void => {
+  const { ticketIds, assigneeId, reason, expectedVersions, batchOperationId } = req.body;
+  if (!Array.isArray(ticketIds) || ticketIds.length === 0) {
+    res.status(400).json({ success: false, error: '请选择要处理的工单' });
+    return;
+  }
+  if (!assigneeId) {
+    res.status(400).json({ success: false, error: '请选择处理人' });
+    return;
+  }
+  if (!reason || !String(reason).trim()) {
+    res.status(400).json({ success: false, error: '必须填写操作原因' });
+    return;
+  }
+  const assignee = findUserById(assigneeId);
+  if (!assignee || (assignee.role !== 'technician' && assignee.role !== 'admin')) {
+    res.status(400).json({ success: false, error: '处理人必须是技术员或管理员' });
+    return;
+  }
+  const user = req.user!;
+  const result = batchChangeAssignee(
+    ticketIds,
+    assigneeId,
+    String(reason).trim(),
+    user.id,
+    expectedVersions as Record<string, number> | undefined,
+    batchOperationId as string | undefined
+  );
+  persist();
+  checkAllEscalations();
+  res.json({ success: true, data: result });
+});
+
+router.post('/batch/exception', requireRoles('admin'), (req: AuthRequest, res: Response): void => {
+  const { ticketIds, type, reason, deadline, expectedVersions, batchOperationId } = req.body;
+  if (!Array.isArray(ticketIds) || ticketIds.length === 0) {
+    res.status(400).json({ success: false, error: '请选择要处理的工单' });
+    return;
+  }
+  if (!type || (type !== 'delay' && type !== 'exempt')) {
+    res.status(400).json({ success: false, error: '例外类型必须为 delay（延后催办）或 exempt（免催办）' });
+    return;
+  }
+  if (!reason || !String(reason).trim()) {
+    res.status(400).json({ success: false, error: '必须填写设置例外的原因' });
+    return;
+  }
+  if (!deadline) {
+    res.status(400).json({ success: false, error: '必须设置截止时间' });
+    return;
+  }
+  const user = req.user!;
+  const result = batchSetEscalationException(
+    ticketIds,
+    type,
+    String(reason).trim(),
+    deadline,
+    user.id,
+    expectedVersions as Record<string, number> | undefined,
+    batchOperationId as string | undefined
+  );
+  persist();
+  checkAllEscalations();
+  res.json({ success: true, data: result });
+});
+
+router.post('/batch/exception/revoke', requireRoles('admin'), (req: AuthRequest, res: Response): void => {
+  const { ticketIds, reason, expectedVersions, batchOperationId } = req.body;
+  if (!Array.isArray(ticketIds) || ticketIds.length === 0) {
+    res.status(400).json({ success: false, error: '请选择要处理的工单' });
+    return;
+  }
+  if (!reason || !String(reason).trim()) {
+    res.status(400).json({ success: false, error: '必须填写撤销例外的原因' });
+    return;
+  }
+  const user = req.user!;
+  const result = batchRevokeEscalationException(
+    ticketIds,
+    String(reason).trim(),
+    user.id,
+    expectedVersions as Record<string, number> | undefined,
+    batchOperationId as string | undefined
+  );
+  persist();
+  checkAllEscalations();
+  res.json({ success: true, data: result });
 });
 
 router.post('/:id/note', (req: AuthRequest, res: Response): void => {

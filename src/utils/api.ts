@@ -8,6 +8,8 @@ import type {
   TicketFilters,
   TicketStatus,
   EscalationException,
+  BatchOperationResult,
+  EscalationExceptionType,
 } from '../../shared/types';
 
 const API_BASE = '/api';
@@ -197,4 +199,56 @@ export function buildExportUrl(params: {
   const token = getAuthToken();
   const query = searchParams.toString();
   return `${API_BASE}/export/tickets${query ? `?${query}` : ''}${token ? (query ? '&' : '?') + `x-user-id=${token}` : ''}`;
+}
+
+export async function batchChangePriority(
+  ticketIds: string[],
+  priorityId: string,
+  reason: string,
+  expectedVersions: Record<string, number>,
+  batchOperationId: string
+) {
+  return request<BatchOperationResult>('/tickets/batch/priority', {
+    method: 'POST',
+    body: JSON.stringify({ ticketIds, priorityId, reason, expectedVersions, batchOperationId }),
+  });
+}
+
+export async function batchChangeAssignee(
+  ticketIds: string[],
+  assigneeId: string,
+  reason: string,
+  expectedVersions: Record<string, number>,
+  batchOperationId: string
+) {
+  return request<BatchOperationResult>('/tickets/batch/assign', {
+    method: 'POST',
+    body: JSON.stringify({ ticketIds, assigneeId, reason, expectedVersions, batchOperationId }),
+  });
+}
+
+export async function batchSetEscalationException(
+  ticketIds: string[],
+  type: EscalationExceptionType,
+  reason: string,
+  deadline: string,
+  expectedVersions: Record<string, number>,
+  batchOperationId: string
+) {
+  return request<BatchOperationResult>('/tickets/batch/exception', {
+    method: 'POST',
+    body: JSON.stringify({ ticketIds, type, reason, deadline, expectedVersions, batchOperationId }),
+  });
+}
+
+export async function batchRevokeEscalationException(
+  ticketIds: string[],
+  reason: string,
+  expectedVersions: Record<string, number>,
+  batchOperationId: string
+) {
+  return request<BatchOperationResult>('/tickets/batch/exception/revoke', {
+    method: 'POST',
+    body: JSON.stringify({ ticketIds, reason, expectedVersions, batchOperationId }),
+  });
 }

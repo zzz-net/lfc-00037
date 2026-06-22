@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Ticket, TicketFilters, TimelineEvent, TicketStatus, EscalationRecord, EscalationException } from '../../shared/types';
+import type { Ticket, TicketFilters, TimelineEvent, TicketStatus, EscalationRecord, EscalationException, BatchOperationResult, EscalationExceptionType } from '../../shared/types';
 import {
   getTickets as apiGetTickets,
   getTicketDetail as apiGetTicketDetail,
@@ -10,6 +10,10 @@ import {
   deEscalateTicket as apiDeEscalateTicket,
   createEscalationException as apiCreateEscalationException,
   revokeEscalationException as apiRevokeEscalationException,
+  batchChangePriority as apiBatchChangePriority,
+  batchChangeAssignee as apiBatchChangeAssignee,
+  batchSetEscalationException as apiBatchSetException,
+  batchRevokeEscalationException as apiBatchRevokeException,
 } from '../utils/api';
 
 interface TicketState {
@@ -20,8 +24,10 @@ interface TicketState {
   escalationRecords: EscalationRecord[];
   escalationExceptions: EscalationException[];
   filters: TicketFilters;
+  selectedTicketIds: Set<string>;
   isLoading: boolean;
   error: string | null;
+  lastBatchResult: BatchOperationResult | null;
   fetchTickets: (filters?: TicketFilters) => Promise<void>;
   fetchTicketDetail: (id: string) => Promise<void>;
   createTicket: (data: {
@@ -41,8 +47,16 @@ interface TicketState {
   revokeEscalation: (id: string, reason: string) => Promise<void>;
   createEscalationException: (id: string, type: 'delay' | 'exempt', reason: string, deadline: string) => Promise<void>;
   revokeEscalationException: (id: string, reason: string) => Promise<void>;
+  batchChangePriority: (ticketIds: string[], priorityId: string, reason: string) => Promise<BatchOperationResult>;
+  batchChangeAssignee: (ticketIds: string[], assigneeId: string, reason: string) => Promise<BatchOperationResult>;
+  batchSetException: (ticketIds: string[], type: EscalationExceptionType, reason: string, deadline: string) => Promise<BatchOperationResult>;
+  batchRevokeException: (ticketIds: string[], reason: string) => Promise<BatchOperationResult>;
   setFilters: (filters: TicketFilters) => void;
+  toggleSelectTicket: (ticketId: string) => void;
+  selectAllTickets: (ticketIds: string[]) => void;
+  clearSelection: () => void;
   clearError: () => void;
+  clearLastBatchResult: () => void;
 }
 
 const FILTERS_KEY = 'ticket_filters';
@@ -64,8 +78,10 @@ export const useTicketStore = create<TicketState>((set, get) => ({
   escalationRecords: [],
   escalationExceptions: [],
   filters: loadSavedFilters(),
+  selectedTicketIds: new Set(),
   isLoading: false,
   error: null,
+  lastBatchResult: null,
 
   fetchTickets: async (filters) => {
     const mergedFilters = { ...get().filters, ...filters };
@@ -225,9 +241,121 @@ export const useTicketStore = create<TicketState>((set, get) => ({
   },
 
   setFilters: (filters) => {
-    set({ filters });
+    set({ filters, selectedTicketIds: new Set() });
     localStorage.setItem(FILTERS_KEY, JSON.stringify(filters));
   },
 
   clearError: () => set({ error: null }),
+
+  toggleSelectTicket: (ticketId) => {
+    set((state) => {
+      const newSelected = new Set(state.selectedTicketIds);
+      if (newSelected.has(ticketId)) {
+        newSelected.delete(ticketId);
+      } else {
+        newSelected.add(ticketId);
+      }
+      return { selectedTicketIds: newSelected };
+    });
+  },
+
+  selectAllTickets: (ticketIds) => {
+    set({ selectedTicketIds: new Set(ticketIds) });
+  },
+
+  clearSelection: () => {
+    set({ selectedTicketIds: new Set() });
+  },
+
+  clearLastBatchResult: () => {
+    set({ lastBatchResult: null });
+  },
+
+  batchChangePriority: async (ticketIds, priorityId, reason) => {
+    set({ isLoading: true, error: null });
+    try {
+      const selectedTickets = get().tickets.filter((t) => ticketIds.includes(t.id));
+      const expectedVersions: Record<string, number> = {};
+      selectedTickets.forEach((t) => {
+        expectedVersions[t.id] = t.version || 1;
+      });
+      const batchOperationId = Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
+      const result = await apiBatchChangePriority(ticketIds, priorityId, reason, expectedVersions, batchOperationId);
+      set({ lastBatchResult: result, isLoading: false, selectedTicketIds: new Set() });
+      await get().fetchTickets();
+      return result;
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : '批量修改优先级失败',
+        isLoading: false,
+      });
+      throw err;
+    }
+  },
+
+  batchChangeAssignee: async (ticketIds, assigneeId, reason) => {
+    set({ isLoading: true, error: null });
+    try {
+      const selectedTickets = get().tickets.filter((t) => ticketIds.includes(t.id));
+      const expectedVersions: Record<string, number> = {};
+      selectedTickets.forEach((t) => {
+        expectedVersions[t.id] = t.version || 1;
+      });
+      const batchOperationId = Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
+      const result = await apiBatchChangeAssignee(ticketIds, assigneeId, reason, expectedVersions, batchOperationId);
+      set({ lastBatchResult: result, isLoading: false, selectedTicketIds: new Set() });
+      await get().fetchTickets();
+      return result;
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : '批量派工失败',
+        isLoading: false,
+      });
+      throw err;
+    }
+  },
+
+  batchSetException: async (ticketIds, type, reason, deadline) => {
+    set({ isLoading: true, error: null });
+    try {
+      const selectedTickets = get().tickets.filter((t) => ticketIds.includes(t.id));
+      const expectedVersions: Record<string, number> = {};
+      selectedTickets.forEach((t) => {
+        expectedVersions[t.id] = t.version || 1;
+      });
+      const batchOperationId = Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
+      const result = await apiBatchSetException(ticketIds, type, reason, deadline, expectedVersions, batchOperationId);
+      set({ lastBatchResult: result, isLoading: false, selectedTicketIds: new Set() });
+      await get().fetchTickets();
+      return result;
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : '批量设置催办例外失败',
+        isLoading: false,
+      });
+      throw err;
+    }
+  },
+
+  batchRevokeException: async (ticketIds, reason) => {
+    set({ isLoading: true, error: null });
+    try {
+      const selectedTickets = get().tickets.filter((t) => ticketIds.includes(t.id));
+      const expectedVersions: Record<string, number> = {};
+      selectedTickets.forEach((t) => {
+        expectedVersions[t.id] = t.version || 1;
+      });
+      const batchOperationId = Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
+      const result = await apiBatchRevokeException(ticketIds, reason, expectedVersions, batchOperationId);
+      set({ lastBatchResult: result, isLoading: false, selectedTicketIds: new Set() });
+      await get().fetchTickets();
+      return result;
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : '批量撤销催办例外失败',
+        isLoading: false,
+      });
+      throw err;
+    }
+  },
 }));
