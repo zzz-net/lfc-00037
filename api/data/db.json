@@ -1,0 +1,259 @@
+{
+  "users": [
+    {
+      "id": "user_admin",
+      "username": "admin",
+      "password": "admin123",
+      "name": "系统管理员",
+      "role": "admin",
+      "createdAt": "2026-06-22T01:42:59.735Z"
+    },
+    {
+      "id": "user_tech1",
+      "username": "tech1",
+      "password": "tech123",
+      "name": "张工程师",
+      "role": "technician",
+      "createdAt": "2026-06-22T01:42:59.735Z"
+    },
+    {
+      "id": "user_tech2",
+      "username": "tech2",
+      "password": "tech123",
+      "name": "李工程师",
+      "role": "technician",
+      "createdAt": "2026-06-22T01:42:59.735Z"
+    },
+    {
+      "id": "user_reader1",
+      "username": "reader1",
+      "password": "reader123",
+      "name": "王馆员",
+      "role": "reader",
+      "createdAt": "2026-06-22T01:42:59.735Z"
+    }
+  ],
+  "assetGroups": [
+    {
+      "id": "grp_selfservice",
+      "name": "自助借还机",
+      "icon": "Library",
+      "sort": 1
+    },
+    {
+      "id": "grp_access",
+      "name": "门禁系统",
+      "icon": "DoorOpen",
+      "sort": 2
+    },
+    {
+      "id": "grp_computer",
+      "name": "公共电脑",
+      "icon": "Monitor",
+      "sort": 3
+    },
+    {
+      "id": "grp_printer",
+      "name": "打印复印设备",
+      "icon": "Printer",
+      "sort": 4
+    },
+    {
+      "id": "grp_other",
+      "name": "其他设备",
+      "icon": "Settings",
+      "sort": 5
+    }
+  ],
+  "assets": [
+    {
+      "id": "asset_001",
+      "code": "LIB-SS-001",
+      "name": "一楼自助借还机A",
+      "type": "自助借还机",
+      "location": "图书馆一楼大厅",
+      "groupId": "grp_selfservice",
+      "createdAt": "2026-06-22T01:42:59.735Z"
+    },
+    {
+      "id": "asset_002",
+      "code": "LIB-SS-002",
+      "name": "一楼自助借还机B",
+      "type": "自助借还机",
+      "location": "图书馆一楼大厅",
+      "groupId": "grp_selfservice",
+      "createdAt": "2026-06-22T01:42:59.735Z"
+    },
+    {
+      "id": "asset_003",
+      "code": "LIB-SS-003",
+      "name": "二楼自助借还机",
+      "type": "自助借还机",
+      "location": "图书馆二楼服务台",
+      "groupId": "grp_selfservice",
+      "createdAt": "2026-06-22T01:42:59.735Z"
+    },
+    {
+      "id": "asset_004",
+      "code": "LIB-AC-001",
+      "name": "正门门禁",
+      "type": "闸机门禁",
+      "location": "图书馆一楼正门",
+      "groupId": "grp_access",
+      "createdAt": "2026-06-22T01:42:59.735Z"
+    },
+    {
+      "id": "asset_005",
+      "code": "LIB-AC-002",
+      "name": "侧门门禁",
+      "type": "刷卡门禁",
+      "location": "图书馆一楼侧门",
+      "groupId": "grp_access",
+      "createdAt": "2026-06-22T01:42:59.735Z"
+    },
+    {
+      "id": "asset_006",
+      "code": "LIB-PC-001",
+      "name": "电子阅览室PC-01",
+      "type": "台式电脑",
+      "location": "图书馆三楼电子阅览室",
+      "groupId": "grp_computer",
+      "createdAt": "2026-06-22T01:42:59.735Z"
+    },
+    {
+      "id": "asset_007",
+      "code": "LIB-PC-002",
+      "name": "电子阅览室PC-02",
+      "type": "台式电脑",
+      "location": "图书馆三楼电子阅览室",
+      "groupId": "grp_computer",
+      "createdAt": "2026-06-22T01:42:59.735Z"
+    },
+    {
+      "id": "asset_008",
+      "code": "LIB-PC-003",
+      "name": "电子阅览室PC-03",
+      "type": "台式电脑",
+      "location": "图书馆三楼电子阅览室",
+      "groupId": "grp_computer",
+      "createdAt": "2026-06-22T01:42:59.735Z"
+    },
+    {
+      "id": "asset_009",
+      "code": "LIB-PR-001",
+      "name": "一楼打印机",
+      "type": "多功能一体机",
+      "location": "图书馆一楼打印区",
+      "groupId": "grp_printer",
+      "createdAt": "2026-06-22T01:42:59.735Z"
+    },
+    {
+      "id": "asset_010",
+      "code": "LIB-PR-002",
+      "name": "三楼打印机",
+      "type": "激光打印机",
+      "location": "图书馆三楼打印区",
+      "groupId": "grp_printer",
+      "createdAt": "2026-06-22T01:42:59.735Z"
+    }
+  ],
+  "priorities": [
+    {
+      "id": "pri_low",
+      "name": "低",
+      "color": "#6b7280",
+      "sort": 1
+    },
+    {
+      "id": "pri_medium",
+      "name": "中",
+      "color": "#3b82f6",
+      "sort": 2
+    },
+    {
+      "id": "pri_high",
+      "name": "高",
+      "color": "#f97316",
+      "sort": 3
+    },
+    {
+      "id": "pri_urgent",
+      "name": "紧急",
+      "color": "#ef4444",
+      "sort": 4
+    }
+  ],
+  "tickets": [
+    {
+      "assetId": "asset_001",
+      "location": "图书馆一楼大厅东侧",
+      "description": "自助借还机屏幕显示异常，无法识别读者卡，经常死机重启，影响读者使用",
+      "priorityId": "pri_high",
+      "id": "mqok7u47ui2s002",
+      "status": "reopened",
+      "submitterId": "user_reader1",
+      "createdAt": "2026-06-22T01:51:37.015Z",
+      "updatedAt": "2026-06-22T02:05:20.690Z",
+      "assigneeId": "user_tech1",
+      "reopenReason": "读者反馈设备仍有故障，需要再次处理"
+    }
+  ],
+  "timelineEvents": [
+    {
+      "ticketId": "mqok7u47ui2s002",
+      "type": "created",
+      "userId": "user_reader1",
+      "content": "创建了报修工单",
+      "id": "mqok7u47xccicpd",
+      "createdAt": "2026-06-22T01:51:37.015Z"
+    },
+    {
+      "ticketId": "mqok7u47ui2s002",
+      "type": "assigned",
+      "userId": "user_admin",
+      "content": "将工单派给 张工程师",
+      "id": "mqokd25ttn7ktcr",
+      "createdAt": "2026-06-22T01:55:40.721Z"
+    },
+    {
+      "ticketId": "mqok7u47ui2s002",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 待派工 变更为 处理中",
+      "id": "mqokd25tb2oshp0",
+      "createdAt": "2026-06-22T01:55:40.721Z"
+    },
+    {
+      "ticketId": "mqok7u47ui2s002",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 处理中 变更为 等待配件",
+      "id": "mqokf24462w0na6",
+      "createdAt": "2026-06-22T01:57:13.972Z"
+    },
+    {
+      "ticketId": "mqok7u47ui2s002",
+      "type": "status_changed",
+      "userId": "user_tech1",
+      "content": "状态从 等待配件 变更为 处理中",
+      "id": "mqokkhap8bcuvvp",
+      "createdAt": "2026-06-22T02:01:26.929Z"
+    },
+    {
+      "ticketId": "mqok7u47ui2s002",
+      "type": "status_changed",
+      "userId": "user_tech1",
+      "content": "状态从 处理中 变更为 已完成",
+      "id": "mqokku1pxaivjys",
+      "createdAt": "2026-06-22T02:01:43.453Z"
+    },
+    {
+      "ticketId": "mqok7u47ui2s002",
+      "type": "reopened",
+      "userId": "user_admin",
+      "content": "重新打开工单，原因：读者反馈设备仍有故障，需要再次处理",
+      "id": "mqokpho4xkt9ahs",
+      "createdAt": "2026-06-22T02:05:20.692Z"
+    }
+  ]
+}
