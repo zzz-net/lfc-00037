@@ -209,6 +209,83 @@
       "updatedAt": "2026-06-22T03:02:02.395Z",
       "assigneeId": "user_tech2",
       "reopenReason": "field-check-required"
+    },
+    {
+      "assetId": "asset_001",
+      "location": "[校验脚本] 测试位置",
+      "description": "[校验脚本] 这是一条校验脚本创建的测试工单，用于验证状态流转规则。",
+      "priorityId": "pri_high",
+      "id": "mqon4wk0wdkon1y",
+      "status": "processing",
+      "submitterId": "user_admin",
+      "createdAt": "2026-06-22T03:13:19.056Z",
+      "updatedAt": "2026-06-22T03:13:19.158Z",
+      "assigneeId": "user_tech2",
+      "reopenReason": "[校验脚本] 测试重新打开流程"
+    },
+    {
+      "assetId": "asset_001",
+      "location": "[校验脚本] 测试位置",
+      "description": "[校验脚本] 这是一条校验脚本创建的测试工单，用于验证状态流转规则。",
+      "priorityId": "pri_high",
+      "id": "mqon8io6rz7ko39",
+      "status": "processing",
+      "submitterId": "user_admin",
+      "createdAt": "2026-06-22T03:16:07.686Z",
+      "updatedAt": "2026-06-22T03:16:07.764Z",
+      "assigneeId": "user_tech2",
+      "reopenReason": "[校验脚本] 测试重新打开流程"
+    },
+    {
+      "assetId": "asset_001",
+      "location": "[校验脚本] 测试位置",
+      "description": "[校验脚本] 这是一条校验脚本创建的测试工单，用于验证状态流转规则。",
+      "priorityId": "pri_high",
+      "id": "mqondzvnw854q4t",
+      "status": "waiting_parts",
+      "submitterId": "user_admin",
+      "createdAt": "2026-06-22T03:20:23.267Z",
+      "updatedAt": "2026-06-22T03:33:38.022Z",
+      "assigneeId": "user_tech2",
+      "reopenReason": "[校验脚本] 测试重新打开流程"
+    },
+    {
+      "assetId": "asset_001",
+      "location": "[校验脚本] 测试位置",
+      "description": "[校验脚本] 这是一条校验脚本创建的测试工单，用于验证状态流转规则。",
+      "priorityId": "pri_high",
+      "id": "mqoo2cd3x2ig3qm",
+      "status": "processing",
+      "submitterId": "user_admin",
+      "createdAt": "2026-06-22T03:39:19.191Z",
+      "updatedAt": "2026-06-22T03:39:19.258Z",
+      "assigneeId": "user_tech2",
+      "reopenReason": "[校验脚本] 测试重新打开流程"
+    },
+    {
+      "assetId": "asset_001",
+      "location": "REVIEW-20260622-2c51e9-location",
+      "description": "REVIEW-20260622-2c51e9 独立复核工单，用于验证重启前后的状态规则和导出一致性。",
+      "priorityId": "pri_high",
+      "id": "mqoo58z3a4bk90z",
+      "status": "waiting_parts",
+      "submitterId": "user_admin",
+      "createdAt": "2026-06-22T03:41:34.767Z",
+      "updatedAt": "2026-06-22T03:41:34.784Z",
+      "assigneeId": "user_tech1"
+    },
+    {
+      "assetId": "asset_001",
+      "location": "REVIEW-20260622-5530e1-location",
+      "description": "REVIEW-20260622-5530e1 独立复核工单，用于验证重启前后的状态规则和导出一致性。",
+      "priorityId": "pri_high",
+      "id": "mqoo5rpf8lzn7e9",
+      "status": "reopened",
+      "submitterId": "user_admin",
+      "createdAt": "2026-06-22T03:41:59.043Z",
+      "updatedAt": "2026-06-22T03:44:17.604Z",
+      "assigneeId": "user_tech1",
+      "reopenReason": "REVIEW-20260622-5530e1 重启后复核重新打开原因"
     }
   ],
   "timelineEvents": [
@@ -347,6 +424,390 @@
       "content": "状态从 重新打开 变更为 处理中",
       "id": "mqomqefwrzxfgub",
       "createdAt": "2026-06-22T03:02:02.396Z"
+    },
+    {
+      "ticketId": "mqon4wk0wdkon1y",
+      "type": "created",
+      "userId": "user_admin",
+      "content": "创建了报修工单",
+      "id": "mqon4wk042i7llp",
+      "createdAt": "2026-06-22T03:13:19.056Z"
+    },
+    {
+      "ticketId": "mqon4wk0wdkon1y",
+      "type": "assigned",
+      "userId": "user_admin",
+      "content": "将工单派给 张工程师：[校验脚本] 测试派工",
+      "id": "mqon4wk77usi4hx",
+      "createdAt": "2026-06-22T03:13:19.063Z"
+    },
+    {
+      "ticketId": "mqon4wk0wdkon1y",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 待派工 变更为 处理中",
+      "id": "mqon4wk779egimi",
+      "createdAt": "2026-06-22T03:13:19.063Z"
+    },
+    {
+      "ticketId": "mqon4wk0wdkon1y",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 处理中 变更为 等待配件（备注：[校验脚本] 进入等待配件）",
+      "id": "mqon4wkdbgcjt3c",
+      "createdAt": "2026-06-22T03:13:19.069Z"
+    },
+    {
+      "ticketId": "mqon4wk0wdkon1y",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 等待配件 变更为 处理中",
+      "id": "mqon4wkthqlww82",
+      "createdAt": "2026-06-22T03:13:19.085Z"
+    },
+    {
+      "ticketId": "mqon4wk0wdkon1y",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 处理中 变更为 已完成（备注：[校验脚本] 正常完成）",
+      "id": "mqon4wkyk4cbx0r",
+      "createdAt": "2026-06-22T03:13:19.090Z"
+    },
+    {
+      "ticketId": "mqon4wk0wdkon1y",
+      "type": "reopened",
+      "userId": "user_admin",
+      "content": "重新打开工单，原因：[校验脚本] 测试重新打开流程",
+      "id": "mqon4wmq8hultw3",
+      "createdAt": "2026-06-22T03:13:19.154Z"
+    },
+    {
+      "ticketId": "mqon4wk0wdkon1y",
+      "type": "assigned",
+      "userId": "user_admin",
+      "content": "将工单派给 李工程师：[校验脚本] 重新打开后派工",
+      "id": "mqon4wmve45qcx1",
+      "createdAt": "2026-06-22T03:13:19.159Z"
+    },
+    {
+      "ticketId": "mqon4wk0wdkon1y",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 重新打开 变更为 处理中",
+      "id": "mqon4wmvn1s9ptv",
+      "createdAt": "2026-06-22T03:13:19.159Z"
+    },
+    {
+      "ticketId": "mqon8io6rz7ko39",
+      "type": "created",
+      "userId": "user_admin",
+      "content": "创建了报修工单",
+      "id": "mqon8io7wpj2c7c",
+      "createdAt": "2026-06-22T03:16:07.687Z"
+    },
+    {
+      "ticketId": "mqon8io6rz7ko39",
+      "type": "assigned",
+      "userId": "user_admin",
+      "content": "将工单派给 张工程师：[校验脚本] 测试派工",
+      "id": "mqon8ioe9y7qall",
+      "createdAt": "2026-06-22T03:16:07.694Z"
+    },
+    {
+      "ticketId": "mqon8io6rz7ko39",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 待派工 变更为 处理中",
+      "id": "mqon8ioez9vxp25",
+      "createdAt": "2026-06-22T03:16:07.694Z"
+    },
+    {
+      "ticketId": "mqon8io6rz7ko39",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 处理中 变更为 等待配件（备注：[校验脚本] 进入等待配件）",
+      "id": "mqon8ioj8h70t93",
+      "createdAt": "2026-06-22T03:16:07.699Z"
+    },
+    {
+      "ticketId": "mqon8io6rz7ko39",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 等待配件 变更为 处理中",
+      "id": "mqon8iow74gu2rl",
+      "createdAt": "2026-06-22T03:16:07.712Z"
+    },
+    {
+      "ticketId": "mqon8io6rz7ko39",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 处理中 变更为 已完成（备注：[校验脚本] 正常完成）",
+      "id": "mqon8ip62l3j3tv",
+      "createdAt": "2026-06-22T03:16:07.722Z"
+    },
+    {
+      "ticketId": "mqon8io6rz7ko39",
+      "type": "reopened",
+      "userId": "user_admin",
+      "content": "重新打开工单，原因：[校验脚本] 测试重新打开流程",
+      "id": "mqon8iq8va3v28d",
+      "createdAt": "2026-06-22T03:16:07.760Z"
+    },
+    {
+      "ticketId": "mqon8io6rz7ko39",
+      "type": "assigned",
+      "userId": "user_admin",
+      "content": "将工单派给 李工程师：[校验脚本] 重新打开后派工",
+      "id": "mqon8iqdl9yri6o",
+      "createdAt": "2026-06-22T03:16:07.765Z"
+    },
+    {
+      "ticketId": "mqon8io6rz7ko39",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 重新打开 变更为 处理中",
+      "id": "mqon8iqd99qj1fc",
+      "createdAt": "2026-06-22T03:16:07.765Z"
+    },
+    {
+      "ticketId": "mqondzvnw854q4t",
+      "type": "created",
+      "userId": "user_admin",
+      "content": "创建了报修工单",
+      "id": "mqondzvng7whgxf",
+      "createdAt": "2026-06-22T03:20:23.267Z"
+    },
+    {
+      "ticketId": "mqondzvnw854q4t",
+      "type": "assigned",
+      "userId": "user_admin",
+      "content": "将工单派给 张工程师：[校验脚本] 测试派工",
+      "id": "mqondzvyus4pg21",
+      "createdAt": "2026-06-22T03:20:23.278Z"
+    },
+    {
+      "ticketId": "mqondzvnw854q4t",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 待派工 变更为 处理中",
+      "id": "mqondzvyfexwxeh",
+      "createdAt": "2026-06-22T03:20:23.278Z"
+    },
+    {
+      "ticketId": "mqondzvnw854q4t",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 处理中 变更为 等待配件（备注：[校验脚本] 进入等待配件）",
+      "id": "mqondzweut8bvo3",
+      "createdAt": "2026-06-22T03:20:23.294Z"
+    },
+    {
+      "ticketId": "mqondzvnw854q4t",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 等待配件 变更为 处理中",
+      "id": "mqondzwv4v7gf5j",
+      "createdAt": "2026-06-22T03:20:23.311Z"
+    },
+    {
+      "ticketId": "mqondzvnw854q4t",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 处理中 变更为 已完成（备注：[校验脚本] 正常完成）",
+      "id": "mqondzx8fpwpq02",
+      "createdAt": "2026-06-22T03:20:23.324Z"
+    },
+    {
+      "ticketId": "mqondzvnw854q4t",
+      "type": "reopened",
+      "userId": "user_admin",
+      "content": "重新打开工单，原因：[校验脚本] 测试重新打开流程",
+      "id": "mqondzy1bijfytt",
+      "createdAt": "2026-06-22T03:20:23.353Z"
+    },
+    {
+      "ticketId": "mqondzvnw854q4t",
+      "type": "assigned",
+      "userId": "user_admin",
+      "content": "将工单派给 李工程师：[校验脚本] 重新打开后派工",
+      "id": "mqondzyc4o1qv5s",
+      "createdAt": "2026-06-22T03:20:23.364Z"
+    },
+    {
+      "ticketId": "mqondzvnw854q4t",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 重新打开 变更为 处理中",
+      "id": "mqondzyc1bz5tnv",
+      "createdAt": "2026-06-22T03:20:23.364Z"
+    },
+    {
+      "ticketId": "mqondzvnw854q4t",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 处理中 变更为 等待配件",
+      "id": "mqonv148vr3v9qi",
+      "createdAt": "2026-06-22T03:33:38.024Z"
+    },
+    {
+      "ticketId": "mqoo2cd3x2ig3qm",
+      "type": "created",
+      "userId": "user_admin",
+      "content": "创建了报修工单",
+      "id": "mqoo2cd3x9pgc5n",
+      "createdAt": "2026-06-22T03:39:19.191Z"
+    },
+    {
+      "ticketId": "mqoo2cd3x2ig3qm",
+      "type": "assigned",
+      "userId": "user_admin",
+      "content": "将工单派给 张工程师：[校验脚本] 测试派工",
+      "id": "mqoo2cddh8rs3i6",
+      "createdAt": "2026-06-22T03:39:19.201Z"
+    },
+    {
+      "ticketId": "mqoo2cd3x2ig3qm",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 待派工 变更为 处理中",
+      "id": "mqoo2cdd4o7g7ry",
+      "createdAt": "2026-06-22T03:39:19.201Z"
+    },
+    {
+      "ticketId": "mqoo2cd3x2ig3qm",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 处理中 变更为 等待配件（备注：[校验脚本] 进入等待配件）",
+      "id": "mqoo2cdkuxwfxdb",
+      "createdAt": "2026-06-22T03:39:19.208Z"
+    },
+    {
+      "ticketId": "mqoo2cd3x2ig3qm",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 等待配件 变更为 处理中",
+      "id": "mqoo2cdy3nc0ybq",
+      "createdAt": "2026-06-22T03:39:19.222Z"
+    },
+    {
+      "ticketId": "mqoo2cd3x2ig3qm",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 处理中 变更为 已完成（备注：[校验脚本] 正常完成）",
+      "id": "mqoo2ce93dm1jcn",
+      "createdAt": "2026-06-22T03:39:19.233Z"
+    },
+    {
+      "ticketId": "mqoo2cd3x2ig3qm",
+      "type": "reopened",
+      "userId": "user_admin",
+      "content": "重新打开工单，原因：[校验脚本] 测试重新打开流程",
+      "id": "mqoo2cet3zwodkp",
+      "createdAt": "2026-06-22T03:39:19.253Z"
+    },
+    {
+      "ticketId": "mqoo2cd3x2ig3qm",
+      "type": "assigned",
+      "userId": "user_admin",
+      "content": "将工单派给 李工程师：[校验脚本] 重新打开后派工",
+      "id": "mqoo2cezyngpucr",
+      "createdAt": "2026-06-22T03:39:19.259Z"
+    },
+    {
+      "ticketId": "mqoo2cd3x2ig3qm",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 重新打开 变更为 处理中",
+      "id": "mqoo2cezjtf53ve",
+      "createdAt": "2026-06-22T03:39:19.259Z"
+    },
+    {
+      "ticketId": "mqoo58z3a4bk90z",
+      "type": "created",
+      "userId": "user_admin",
+      "content": "创建了报修工单",
+      "id": "mqoo58z3jtwsyh9",
+      "createdAt": "2026-06-22T03:41:34.767Z"
+    },
+    {
+      "ticketId": "mqoo58z3a4bk90z",
+      "type": "assigned",
+      "userId": "user_admin",
+      "content": "将工单派给 张工程师：REVIEW-20260622-2c51e9 assign",
+      "id": "mqoo58zft93ndaj",
+      "createdAt": "2026-06-22T03:41:34.779Z"
+    },
+    {
+      "ticketId": "mqoo58z3a4bk90z",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 待派工 变更为 处理中",
+      "id": "mqoo58zfdhq8t0u",
+      "createdAt": "2026-06-22T03:41:34.779Z"
+    },
+    {
+      "ticketId": "mqoo58z3a4bk90z",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 处理中 变更为 等待配件（备注：REVIEW-20260622-2c51e9 waiting）",
+      "id": "mqoo58zlcc1s8yh",
+      "createdAt": "2026-06-22T03:41:34.785Z"
+    },
+    {
+      "ticketId": "mqoo5rpf8lzn7e9",
+      "type": "created",
+      "userId": "user_admin",
+      "content": "创建了报修工单",
+      "id": "mqoo5rpfhs1rq93",
+      "createdAt": "2026-06-22T03:41:59.043Z"
+    },
+    {
+      "ticketId": "mqoo5rpf8lzn7e9",
+      "type": "assigned",
+      "userId": "user_admin",
+      "content": "将工单派给 张工程师：REVIEW-20260622-5530e1 assign",
+      "id": "mqoo5rppa7uep53",
+      "createdAt": "2026-06-22T03:41:59.053Z"
+    },
+    {
+      "ticketId": "mqoo5rpf8lzn7e9",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 待派工 变更为 处理中",
+      "id": "mqoo5rppxx4zj1o",
+      "createdAt": "2026-06-22T03:41:59.053Z"
+    },
+    {
+      "ticketId": "mqoo5rpf8lzn7e9",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 处理中 变更为 等待配件（备注：REVIEW-20260622-5530e1 waiting）",
+      "id": "mqoo5rpv4nfv2l7",
+      "createdAt": "2026-06-22T03:41:59.059Z"
+    },
+    {
+      "ticketId": "mqoo5rpf8lzn7e9",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 等待配件 变更为 处理中（备注：REVIEW-20260622-5530e1 resume-after-restart）",
+      "id": "mqoo8qm4ow3g6a2",
+      "createdAt": "2026-06-22T03:44:17.596Z"
+    },
+    {
+      "ticketId": "mqoo5rpf8lzn7e9",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 处理中 变更为 已完成（备注：REVIEW-20260622-5530e1 complete-after-restart）",
+      "id": "mqoo8qm99s0fscj",
+      "createdAt": "2026-06-22T03:44:17.601Z"
+    },
+    {
+      "ticketId": "mqoo5rpf8lzn7e9",
+      "type": "reopened",
+      "userId": "user_admin",
+      "content": "重新打开工单，原因：REVIEW-20260622-5530e1 重启后复核重新打开原因",
+      "id": "mqoo8qmctaf1i1l",
+      "createdAt": "2026-06-22T03:44:17.604Z"
     }
   ]
 }

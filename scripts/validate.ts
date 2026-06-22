@@ -247,120 +247,300 @@ function validateExportConsistency(): TestResult[] {
 async function runApiSmokeTests(): Promise<TestResult[]> {
   const results: TestResult[] = [];
   const BASE = 'http://localhost:3001/api';
+  const TEST_PREFIX = '[校验脚本]';
 
-  async function tryFetch(path: string, options: RequestInit = {}): Promise<{ ok: boolean; status: number; data: any }> {
+  async function api(
+    path: string,
+    options: RequestInit = {}
+  ): Promise<{ ok: boolean; status: number; data: any; body: string; arrayBuffer?: ArrayBuffer }> {
     try {
       const res = await fetch(`${BASE}${path}`, {
         ...options,
         headers: { 'Content-Type': 'application/json', ...options.headers as Record<string, string> },
       });
-      const text = await res.text();
+      const buf = await res.arrayBuffer();
+      const text = new TextDecoder('utf-8', { fatal: false }).decode(buf);
       let data: any;
       try { data = JSON.parse(text); } catch { data = text; }
-      return { ok: res.ok, status: res.status, data };
-    } catch {
-      return { ok: false, status: 0, data: null };
+      return { ok: res.ok, status: res.status, data, body: text, arrayBuffer: buf };
+    } catch (err) {
+      return { ok: false, status: 0, data: null, body: String(err) };
     }
   }
 
-  const loginRes = await tryFetch('/auth/login', {
+  function evidence(method: string, path: string, status: number, error?: string): string {
+    return `[${method}] ${path} → ${status}${error ? `, error="${error}"` : ''}`;
+  }
+
+  const adminLogin = await api('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ username: 'admin', password: 'admin123' }),
   });
-
-  if (!loginRes.ok) {
-    results.push({ name: 'API 连通性', passed: false, details: '❌ 无法登录 admin 用户，跳过 API 测试' });
+  if (!adminLogin.ok) {
+    results.push({
+      name: 'API 连通性',
+      passed: false,
+      details: `❌ 无法登录 admin 用户: ${adminLogin.data?.error || adminLogin.body}`,
+    });
     return results;
   }
-
-  const token = loginRes.data?.data?.token;
-  const headers = { 'x-user-id': token || '' };
-
-  results.push({ name: 'API 连通性', passed: true, details: '✓ 成功登录 admin 用户' });
-
-  const ticketsRes = await tryFetch('/tickets', { headers });
+  const adminToken = adminLogin.data?.data?.token;
+  const adminHeaders = { 'x-user-id': adminToken || '' };
   results.push({
-    name: '获取工单列表',
-    passed: ticketsRes.ok,
-    details: ticketsRes.ok ? `✓ 获取到 ${ticketsRes.data?.data?.tickets?.length || 0} 条工单` : `❌ 状态码 ${ticketsRes.status}`,
+    name: 'API 连通性',
+    passed: true,
+    details: '✓ 成功登录 admin 用户 (API 端口 3001)',
   });
 
-  const completedTicket = (ticketsRes.data?.data?.tickets || []).find((t: any) => t.status === 'completed');
-  if (completedTicket) {
-    const assignRes = await tryFetch(`/tickets/${completedTicket.id}/assign`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ assigneeId: 'user_tech1' }),
-    });
-    results.push({
-      name: '拦截已完成工单派工',
-      passed: !assignRes.ok,
-      details: !assignRes.ok ? `✓ 已完成工单派工被拦截: ${assignRes.data?.error || ''}` : '❌ 已完成工单派工未被拦截',
-    });
-
-    const statusRes = await tryFetch(`/tickets/${completedTicket.id}/status`, {
-      method: 'PUT',
-      headers,
-      body: JSON.stringify({ status: 'processing' }),
-    });
-    results.push({
-      name: '拦截已完成→处理中跳转',
-      passed: !statusRes.ok,
-      details: !statusRes.ok ? `✓ 跳转被拦截: ${statusRes.data?.error || ''}` : '❌ 跳转未被拦截',
-    });
-  }
-
-  const wpTicket = (ticketsRes.data?.data?.tickets || []).find((t: any) => t.status === 'waiting_parts');
-  if (wpTicket) {
-    const statusRes = await tryFetch(`/tickets/${wpTicket.id}/status`, {
-      method: 'PUT',
-      headers,
-      body: JSON.stringify({ status: 'completed' }),
-    });
-    results.push({
-      name: '拦截等待配件→完成跳转',
-      passed: !statusRes.ok,
-      details: !statusRes.ok ? `✓ 跳转被拦截: ${statusRes.data?.error || ''}` : '❌ 跳转未被拦截',
-    });
-  }
-
-  const readerLoginRes = await tryFetch('/auth/login', {
+  const readerLogin = await api('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ username: 'reader1', password: 'reader123' }),
   });
-  if (readerLoginRes.ok) {
-    const readerToken = readerLoginRes.data?.data?.token;
-    const readerHeaders = { 'x-user-id': readerToken || '' };
+  const readerToken = readerLogin.data?.data?.token;
+  const readerHeaders = { 'x-user-id': readerToken || '' };
+  results.push({
+    name: '读者角色登录',
+    passed: readerLogin.ok,
+    details: readerLogin.ok ? '✓ reader1 登录成功' : `❌ reader1 登录失败: ${readerLogin.data?.error || ''}`,
+  });
 
-    const processingTicket = (ticketsRes.data?.data?.tickets || []).find((t: any) => t.status === 'processing' || t.status === 'reopened');
-    if (processingTicket) {
-      const closeRes = await tryFetch(`/tickets/${processingTicket.id}/status`, {
-        method: 'PUT',
-        headers: readerHeaders,
-        body: JSON.stringify({ status: 'completed' }),
-      });
-      results.push({
-        name: '拦截读者关闭工单',
-        passed: !closeRes.ok,
-        details: !closeRes.ok ? `✓ 读者关闭被拦截: ${closeRes.data?.error || ''}` : '❌ 读者关闭未被拦截',
-      });
-    }
-  }
-
-  const reopenWithoutReason = completedTicket
-    ? await tryFetch(`/tickets/${completedTicket.id}/status`, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify({ status: 'reopened' }),
-      })
-    : null;
-  if (reopenWithoutReason) {
+  const createRes = await api('/tickets', {
+    method: 'POST',
+    headers: adminHeaders,
+    body: JSON.stringify({
+      assetId: 'asset_001',
+      location: `${TEST_PREFIX} 测试位置`,
+      description: `${TEST_PREFIX} 这是一条校验脚本创建的测试工单，用于验证状态流转规则。`,
+      priorityId: 'pri_high',
+    }),
+  });
+  if (!createRes.ok) {
     results.push({
-      name: '拦截无原因重新打开',
-      passed: !reopenWithoutReason.ok,
-      details: !reopenWithoutReason.ok ? `✓ 重新打开必须填写原因: ${reopenWithoutReason.data?.error || ''}` : '❌ 未填写原因仍可重新打开',
+      name: '创建测试工单',
+      passed: false,
+      details: `❌ 创建失败: ${createRes.data?.error || createRes.body}`,
+    });
+    return results;
+  }
+  const ticketId = createRes.data?.data?.ticket?.id;
+  results.push({
+    name: '创建测试工单',
+    passed: true,
+    details: `✓ 工单 ${ticketId} 已创建，初始状态 pending`,
+  });
+
+  const assignRes = await api(`/tickets/${ticketId}/assign`, {
+    method: 'POST',
+    headers: adminHeaders,
+    body: JSON.stringify({ assigneeId: 'user_tech1', note: `${TEST_PREFIX} 测试派工` }),
+  });
+  results.push({
+    name: '正常派工（pending→processing）',
+    passed: assignRes.ok,
+    details: assignRes.ok
+      ? `✓ 派工成功: ${evidence('POST', `/tickets/${ticketId}/assign`, assignRes.status)}`
+      : `❌ 派工失败: ${evidence('POST', `/tickets/${ticketId}/assign`, assignRes.status, assignRes.data?.error)}`,
+  });
+
+  const wpRes = await api(`/tickets/${ticketId}/status`, {
+    method: 'PUT',
+    headers: adminHeaders,
+    body: JSON.stringify({ status: 'waiting_parts', note: `${TEST_PREFIX} 进入等待配件` }),
+  });
+  results.push({
+    name: '正常流转：处理中→等待配件',
+    passed: wpRes.ok,
+    details: wpRes.ok
+      ? `✓ 状态更新成功: ${evidence('PUT', `/tickets/${ticketId}/status`, wpRes.status)}`
+      : `❌ 状态更新失败: ${evidence('PUT', `/tickets/${ticketId}/status`, wpRes.status, wpRes.data?.error)}`,
+  });
+
+  const wpToCompleteRes = await api(`/tickets/${ticketId}/status`, {
+    method: 'PUT',
+    headers: adminHeaders,
+    body: JSON.stringify({ status: 'completed' }),
+  });
+  results.push({
+    name: '【关键拦截】等待配件→完成（管理员也不行）',
+    passed: !wpToCompleteRes.ok && wpToCompleteRes.status === 400,
+    details: !wpToCompleteRes.ok
+      ? `✓ 已拦截: ${evidence('PUT', `/tickets/${ticketId}/status`, wpToCompleteRes.status, wpToCompleteRes.data?.error)}`
+      : `❌ 未拦截，等待配件状态居然可以直接完成: ${evidence('PUT', `/tickets/${ticketId}/status`, wpToCompleteRes.status)}`,
+  });
+
+  const readerCloseRes = await api(`/tickets/${ticketId}/status`, {
+    method: 'PUT',
+    headers: readerHeaders,
+    body: JSON.stringify({ status: 'completed' }),
+  });
+  results.push({
+    name: '【关键拦截】读者尝试关闭工单（等待配件状态下）',
+    passed: !readerCloseRes.ok,
+    details: !readerCloseRes.ok
+      ? `✓ 已拦截: ${evidence('PUT', `/tickets/${ticketId}/status`, readerCloseRes.status, readerCloseRes.data?.error)}`
+      : `❌ 未拦截，读者居然可以关闭工单: ${evidence('PUT', `/tickets/${ticketId}/status`, readerCloseRes.status)}`,
+  });
+
+  const backToProcessingRes = await api(`/tickets/${ticketId}/status`, {
+    method: 'PUT',
+    headers: adminHeaders,
+    body: JSON.stringify({ status: 'processing' }),
+  });
+  results.push({
+    name: '正常流转：等待配件→处理中',
+    passed: backToProcessingRes.ok,
+    details: backToProcessingRes.ok
+      ? `✓ 恢复处理成功`
+      : `❌ 恢复处理失败: ${backToProcessingRes.data?.error || ''}`,
+  });
+
+  const readerCloseProcessingRes = await api(`/tickets/${ticketId}/status`, {
+    method: 'PUT',
+    headers: readerHeaders,
+    body: JSON.stringify({ status: 'completed' }),
+  });
+  results.push({
+    name: '【关键拦截】读者尝试关闭工单（处理中状态下）',
+    passed: !readerCloseProcessingRes.ok && readerCloseProcessingRes.status === 403,
+    details: !readerCloseProcessingRes.ok
+      ? `✓ 已拦截 (403): ${evidence('PUT', `/tickets/${ticketId}/status`, readerCloseProcessingRes.status, readerCloseProcessingRes.data?.error)}`
+      : `❌ 未拦截，读者居然可以关闭工单: ${evidence('PUT', `/tickets/${ticketId}/status`, readerCloseProcessingRes.status)}`,
+  });
+
+  const completeRes = await api(`/tickets/${ticketId}/status`, {
+    method: 'PUT',
+    headers: adminHeaders,
+    body: JSON.stringify({ status: 'completed', note: `${TEST_PREFIX} 正常完成` }),
+  });
+  results.push({
+    name: '正常流转：处理中→完成',
+    passed: completeRes.ok,
+    details: completeRes.ok
+      ? `✓ 工单已完成`
+      : `❌ 完成失败: ${completeRes.data?.error || ''}`,
+  });
+
+  const completedAssignRes = await api(`/tickets/${ticketId}/assign`, {
+    method: 'POST',
+    headers: adminHeaders,
+    body: JSON.stringify({ assigneeId: 'user_tech2' }),
+  });
+  results.push({
+    name: '【关键拦截】已完成工单派工',
+    passed: !completedAssignRes.ok && completedAssignRes.status === 400,
+    details: !completedAssignRes.ok
+      ? `✓ 已拦截: ${evidence('POST', `/tickets/${ticketId}/assign`, completedAssignRes.status, completedAssignRes.data?.error)}`
+      : `❌ 未拦截，已完成工单居然可以重新派工: ${evidence('POST', `/tickets/${ticketId}/assign`, completedAssignRes.status)}`,
+  });
+
+  const completedToProcessingRes = await api(`/tickets/${ticketId}/status`, {
+    method: 'PUT',
+    headers: adminHeaders,
+    body: JSON.stringify({ status: 'processing' }),
+  });
+  results.push({
+    name: '【关键拦截】已完成→处理中（绕过重新打开）',
+    passed: !completedToProcessingRes.ok && completedToProcessingRes.status === 400,
+    details: !completedToProcessingRes.ok
+      ? `✓ 已拦截: ${evidence('PUT', `/tickets/${ticketId}/status`, completedToProcessingRes.status, completedToProcessingRes.data?.error)}`
+      : `❌ 未拦截，已完成工单居然可以直接改回处理中: ${evidence('PUT', `/tickets/${ticketId}/status`, completedToProcessingRes.status)}`,
+  });
+
+  const completedNoteRes = await api(`/tickets/${ticketId}/note`, {
+    method: 'POST',
+    headers: adminHeaders,
+    body: JSON.stringify({ note: `${TEST_PREFIX} 测试备注` }),
+  });
+  results.push({
+    name: '【关键拦截】已完成工单添加备注',
+    passed: !completedNoteRes.ok && completedNoteRes.status === 400,
+    details: !completedNoteRes.ok
+      ? `✓ 已拦截: ${evidence('POST', `/tickets/${ticketId}/note`, completedNoteRes.status, completedNoteRes.data?.error)}`
+      : `❌ 未拦截，已完成工单居然可以加备注: ${evidence('POST', `/tickets/${ticketId}/note`, completedNoteRes.status)}`,
+  });
+
+  const reopenNoReasonRes = await api(`/tickets/${ticketId}/status`, {
+    method: 'PUT',
+    headers: adminHeaders,
+    body: JSON.stringify({ status: 'reopened' }),
+  });
+  results.push({
+    name: '【关键拦截】重新打开不填原因',
+    passed: !reopenNoReasonRes.ok && reopenNoReasonRes.status === 400,
+    details: !reopenNoReasonRes.ok
+      ? `✓ 已拦截: ${evidence('PUT', `/tickets/${ticketId}/status`, reopenNoReasonRes.status, reopenNoReasonRes.data?.error)}`
+      : `❌ 未拦截，不填原因居然可以重新打开: ${evidence('PUT', `/tickets/${ticketId}/status`, reopenNoReasonRes.status)}`,
+  });
+
+  const reopenRes = await api(`/tickets/${ticketId}/status`, {
+    method: 'PUT',
+    headers: adminHeaders,
+    body: JSON.stringify({ status: 'reopened', reopenReason: `${TEST_PREFIX} 测试重新打开流程` }),
+  });
+  results.push({
+    name: '管理员重新打开（带原因）',
+    passed: reopenRes.ok,
+    details: reopenRes.ok
+      ? `✓ 重新打开成功，状态变为 reopened`
+      : `❌ 重新打开失败: ${reopenRes.data?.error || ''}`,
+  });
+
+  if (reopenRes.ok) {
+    const reopenedAssignRes = await api(`/tickets/${ticketId}/assign`, {
+      method: 'POST',
+      headers: adminHeaders,
+      body: JSON.stringify({ assigneeId: 'user_tech2', note: `${TEST_PREFIX} 重新打开后派工` }),
+    });
+    results.push({
+      name: '重新打开后可以派工',
+      passed: reopenedAssignRes.ok,
+      details: reopenedAssignRes.ok
+        ? `✓ 重新打开后派工成功，状态变为 processing`
+        : `❌ 重新打开后派工失败: ${reopenedAssignRes.data?.error || ''}`,
     });
   }
+
+  const detailRes = await api(`/tickets/${ticketId}`, { headers: adminHeaders });
+  const hasTimeline = Array.isArray(detailRes.data?.data?.timeline) && detailRes.data.data.timeline.length > 0;
+  results.push({
+    name: '时间线记录完整性',
+    passed: hasTimeline,
+    details: hasTimeline
+      ? `✓ 工单详情包含 ${detailRes.data.data.timeline.length} 条时间线记录`
+      : '❌ 工单详情缺少时间线记录',
+  });
+
+  const exportCsvRes = await api('/export/tickets?format=csv', { headers: adminHeaders });
+  const csvBytes = exportCsvRes.arrayBuffer ? new Uint8Array(exportCsvRes.arrayBuffer) : new Uint8Array();
+  const csvHasBom = csvBytes.length >= 3 && csvBytes[0] === 0xEF && csvBytes[1] === 0xBB && csvBytes[2] === 0xBF;
+  const csvHasChinese = exportCsvRes.body.includes('工单ID') && exportCsvRes.body.includes('设备名称');
+  const bomHex = csvBytes.length >= 3
+    ? '0x' + Array.from(csvBytes.slice(0, 3)).map(b => b.toString(16).padStart(2, '0')).join(' ')
+    : 'n/a';
+  results.push({
+    name: 'CSV 导出：中文列头 + BOM',
+    passed: csvHasBom && csvHasChinese,
+    details: csvHasBom && csvHasChinese
+      ? `✓ CSV 包含 UTF-8 BOM 头 (${bomHex}) 和中文字段，Excel 可直接打开`
+      : `❌ BOM=${csvHasBom} (${bomHex}), 含中文列头=${csvHasChinese}`,
+  });
+
+  const exportJsonRes = await api('/export/tickets?format=json', { headers: adminHeaders });
+  let jsonHasChineseKeys = false;
+  try {
+    const jsonData = JSON.parse(exportJsonRes.body);
+    if (Array.isArray(jsonData) && jsonData.length > 0) {
+      const keys = Object.keys(jsonData[0]);
+      jsonHasChineseKeys = keys.includes('工单ID') && keys.includes('状态变更记录');
+    }
+  } catch {}
+  results.push({
+    name: 'JSON 导出：中文字段可回读',
+    passed: jsonHasChineseKeys,
+    details: jsonHasChineseKeys
+      ? '✓ JSON 使用中文字段名，与 CSV 列头一致，可被程序回读'
+      : '❌ JSON 导出不包含预期的中文字段',
+  });
 
   return results;
 }
