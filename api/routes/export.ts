@@ -1,5 +1,5 @@
 import { Router, type Response } from 'express';
-import { getTickets, getTechnicians, getTimelineEvents } from '../data/store.js';
+import { getTickets, getTechnicians, getTimelineEvents, getEscalationExceptionsByTicket } from '../data/store.js';
 import { authMiddleware, requireRoles, type AuthRequest } from '../middleware/auth.js';
 import { STATUS_LABELS } from '../../shared/types.js';
 
@@ -28,6 +28,20 @@ function formatStatusHistory(ticketId: string): string {
 }
 
 function buildExportRow(t: ReturnType<typeof getTickets>[0], techMap: Map<string, string>) {
+  const exceptions = getEscalationExceptionsByTicket(t.id);
+  const activeException = exceptions.find((e) => !e.revokedAt && new Date(e.deadline).getTime() > Date.now());
+  const exceptionHistory = exceptions
+    .map((e) => {
+      const status = e.revokedAt
+        ? '已撤销'
+        : new Date(e.deadline).getTime() <= Date.now()
+          ? '已过期'
+          : '生效中';
+      const typeLabel = e.type === 'delay' ? '延后催办' : '免催办';
+      return `[${new Date(e.createdAt).toLocaleString('zh-CN', { hour12: false })}] ${typeLabel}，${status}，原因：${e.reason}，截止：${new Date(e.deadline).toLocaleString('zh-CN', { hour12: false })}${e.revokedAt ? `，撤销时间：${new Date(e.revokedAt).toLocaleString('zh-CN', { hour12: false })}，撤销原因：${e.revokeReason}` : ''}`;
+    })
+    .join('；');
+
   return {
     工单ID: t.id,
     设备名称: t.asset?.name || '',
@@ -43,6 +57,12 @@ function buildExportRow(t: ReturnType<typeof getTickets>[0], techMap: Map<string
     催办时间: t.escalatedAt || '',
     升级原因: t.escalationReason || '',
     升级负责人: t.escalationOwner?.name || (t.escalationOwnerId ? techMap.get(t.escalationOwnerId) || '' : ''),
+    催办例外状态: activeException ? (activeException.type === 'delay' ? '延后催办' : '免催办') : '无',
+    催办例外原因: activeException?.reason || '',
+    催办例外截止时间: activeException?.deadline || '',
+    催办例外操作人: activeException ? (techMap.get(activeException.createdBy) || activeException.createdBy) : '',
+    催办例外设置时间: activeException?.createdAt || '',
+    催办例外历史: exceptionHistory || '',
     创建时间: t.createdAt,
     更新时间: t.updatedAt,
     关闭时间: t.closedAt || '',
@@ -80,7 +100,9 @@ router.get('/tickets', authMiddleware, requireRoles('admin'), (req: AuthRequest,
   const headers = sampleRow ? Object.keys(sampleRow) : [
     '工单ID', '设备名称', '设备编号', '设备类型', '位置', '问题描述',
     '优先级', '状态', '报修人', '处理人', '是否催办', '催办时间',
-    '升级原因', '升级负责人', '创建时间', '更新时间',
+    '升级原因', '升级负责人', '催办例外状态', '催办例外原因',
+    '催办例外截止时间', '催办例外操作人', '催办例外设置时间',
+    '催办例外历史', '创建时间', '更新时间',
     '关闭时间', '重新打开原因', '状态变更记录',
   ];
 

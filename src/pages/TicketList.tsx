@@ -1,8 +1,8 @@
 import { useNavigate } from 'react-router-dom';
-import { Plus, Eye, MapPin, User, AlertCircle, Megaphone } from 'lucide-react';
+import { Plus, Eye, MapPin, User, AlertCircle, Megaphone, Shield } from 'lucide-react';
 import { useTicketStore } from '../store';
 import TicketFilters from '../components/ticket/TicketFilters';
-import { getStatusBadgeClass, getStatusLabel, formatDateTime, getEscalationBadgeClass } from '../utils/helpers';
+import { getStatusBadgeClass, getStatusLabel, formatDateTime, getEscalationBadgeClass, getExceptionBadgeClass } from '../utils/helpers';
 
 export default function TicketList() {
   const { tickets, isLoading, total } = useTicketStore();
@@ -62,6 +62,11 @@ export default function TicketList() {
                               <Megaphone className="w-3 h-3 inline mr-0.5" />催办中
                             </span>
                           )}
+                          {ticket.escalationException && !ticket.isEscalated && (
+                            <span className={`badge ${getExceptionBadgeClass(ticket.escalationException.type)} text-[10px] py-0.5 px-1.5`} title={ticket.escalationException.reason}>
+                              <Shield className="w-3 h-3 inline mr-0.5" />{ticket.escalationException.type === 'delay' ? '延后' : '免催'}
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs text-slate-500 font-mono">{ticket.asset?.code}</p>
                         <p className="text-xs text-slate-600 mt-1 line-clamp-1">{ticket.description}</p>
@@ -87,7 +92,20 @@ export default function TicketList() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      {ticket.isEscalated ? (
+                      {ticket.escalationException && !ticket.isEscalated ? (
+                        <div className="space-y-1">
+                          <p className={`text-xs font-medium ${ticket.escalationException.type === 'delay' ? 'text-amber-700' : 'text-teal-700'}`}>
+                            <Shield className="w-3 h-3 inline mr-0.5" />
+                            {ticket.escalationException.type === 'delay' ? '延后催办' : '免催办'}
+                          </p>
+                          <p className="text-xs text-slate-500 line-clamp-1 max-w-[200px]" title={ticket.escalationException.reason}>
+                            原因：{ticket.escalationException.reason}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            截止：{formatDateTime(ticket.escalationException.deadline)}
+                          </p>
+                        </div>
+                      ) : ticket.isEscalated ? (
                         <div className="space-y-1">
                           <p className="text-xs font-medium text-rose-700">
                             催办时间：{ticket.escalatedAt ? formatDateTime(ticket.escalatedAt) : '-'}

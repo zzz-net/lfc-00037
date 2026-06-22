@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Ticket, TicketFilters, TimelineEvent, TicketStatus, EscalationRecord } from '../../shared/types';
+import type { Ticket, TicketFilters, TimelineEvent, TicketStatus, EscalationRecord, EscalationException } from '../../shared/types';
 import {
   getTickets as apiGetTickets,
   getTicketDetail as apiGetTicketDetail,
@@ -8,6 +8,8 @@ import {
   updateTicketStatus as apiUpdateTicketStatus,
   addTicketNote as apiAddTicketNote,
   deEscalateTicket as apiDeEscalateTicket,
+  createEscalationException as apiCreateEscalationException,
+  revokeEscalationException as apiRevokeEscalationException,
 } from '../utils/api';
 
 interface TicketState {
@@ -16,6 +18,7 @@ interface TicketState {
   currentTicket: Ticket | null;
   timeline: TimelineEvent[];
   escalationRecords: EscalationRecord[];
+  escalationExceptions: EscalationException[];
   filters: TicketFilters;
   isLoading: boolean;
   error: string | null;
@@ -36,6 +39,8 @@ interface TicketState {
   ) => Promise<void>;
   addNote: (id: string, note: string) => Promise<void>;
   revokeEscalation: (id: string, reason: string) => Promise<void>;
+  createEscalationException: (id: string, type: 'delay' | 'exempt', reason: string, deadline: string) => Promise<void>;
+  revokeEscalationException: (id: string, reason: string) => Promise<void>;
   setFilters: (filters: TicketFilters) => void;
   clearError: () => void;
 }
@@ -57,6 +62,7 @@ export const useTicketStore = create<TicketState>((set, get) => ({
   currentTicket: null,
   timeline: [],
   escalationRecords: [],
+  escalationExceptions: [],
   filters: loadSavedFilters(),
   isLoading: false,
   error: null,
@@ -84,6 +90,7 @@ export const useTicketStore = create<TicketState>((set, get) => ({
         currentTicket: result.ticket,
         timeline: result.timeline,
         escalationRecords: (result as any).escalationRecords || [],
+        escalationExceptions: (result as any).escalationExceptions || [],
         isLoading: false,
       });
     } catch (err) {
@@ -171,6 +178,46 @@ export const useTicketStore = create<TicketState>((set, get) => ({
     } catch (err) {
       set({
         error: err instanceof Error ? err.message : '撤销催办失败',
+        isLoading: false,
+      });
+      throw err;
+    }
+  },
+
+  createEscalationException: async (id, type, reason, deadline) => {
+    set({ isLoading: true, error: null });
+    try {
+      const result = await apiCreateEscalationException(id, type, reason, deadline);
+      set({
+        currentTicket: result.ticket,
+        timeline: result.timeline,
+        escalationExceptions: (result as any).escalationExceptions || get().escalationExceptions,
+        isLoading: false,
+      });
+      await get().fetchTickets();
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : '设置催办例外失败',
+        isLoading: false,
+      });
+      throw err;
+    }
+  },
+
+  revokeEscalationException: async (id, reason) => {
+    set({ isLoading: true, error: null });
+    try {
+      const result = await apiRevokeEscalationException(id, reason);
+      set({
+        currentTicket: result.ticket,
+        timeline: result.timeline,
+        escalationExceptions: (result as any).escalationExceptions || get().escalationExceptions,
+        isLoading: false,
+      });
+      await get().fetchTickets();
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : '撤销催办例外失败',
         isLoading: false,
       });
       throw err;

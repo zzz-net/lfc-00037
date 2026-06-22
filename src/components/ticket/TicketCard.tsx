@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
-import { MapPin, User, Clock, AlertCircle, Megaphone } from 'lucide-react';
+import { MapPin, User, Clock, AlertCircle, Megaphone, Shield } from 'lucide-react';
 import type { Ticket } from '../../../shared/types';
-import { getStatusBadgeClass, getStatusLabel, timeAgo, getEscalationBadgeClass, formatDateTime } from '../../utils/helpers';
+import { getStatusBadgeClass, getStatusLabel, timeAgo, getEscalationBadgeClass, getExceptionBadgeClass, formatDateTime } from '../../utils/helpers';
 
 interface TicketCardProps {
   ticket: Ticket;
@@ -22,6 +22,14 @@ export default function TicketCard({ ticket }: TicketCardProps) {
           <span className={`badge ${getEscalationBadgeClass()} shadow-sm flex items-center gap-1`} title={ticket.escalationReason}>
             <Megaphone className="w-3 h-3" />
             催办中
+          </span>
+        </div>
+      )}
+      {ticket.escalationException && !ticket.isEscalated && (
+        <div className="absolute -top-2 -right-2 z-10">
+          <span className={`badge ${getExceptionBadgeClass(ticket.escalationException.type)} shadow-sm flex items-center gap-1`} title={ticket.escalationException.reason}>
+            <Shield className="w-3 h-3" />
+            {ticket.escalationException.type === 'delay' ? '延后' : '免催'}
           </span>
         </div>
       )}

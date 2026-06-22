@@ -12,6 +12,8 @@ import type {
   PublicUser,
   TicketStatus,
   EscalationRecord,
+  EscalationException,
+  EscalationExceptionType,
 } from '../../shared/types.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -167,6 +169,7 @@ function getInitialDatabase(): Database {
     tickets: [],
     timelineEvents: [],
     escalationRecords: [],
+    escalationExceptions: [],
   };
 }
 
@@ -179,6 +182,12 @@ function validateDatabase(db: Database): { fixed: number; warnings: string[] } {
   if (!db.escalationRecords) {
     db.escalationRecords = [];
     warnings.push('数据库缺少 escalationRecords 表，已初始化空数组');
+    fixed++;
+  }
+
+  if (!db.escalationExceptions) {
+    db.escalationExceptions = [];
+    warnings.push('数据库缺少 escalationExceptions 表，已初始化空数组');
     fixed++;
   }
 
@@ -283,6 +292,27 @@ function validateDatabase(db: Database): { fixed: number; warnings: string[] } {
       rec.responseTimeMinutesAtTrigger = pri?.responseTimeMinutes || 0;
       warnings.push(`催办记录 ${rec.id} 缺少 responseTimeMinutesAtTrigger，已补默认值 ${rec.responseTimeMinutesAtTrigger}`);
       fixed++;
+    }
+  }
+
+  for (const exc of db.escalationExceptions) {
+    if (!ticketIds.has(exc.ticketId)) {
+      warnings.push(`催办例外 ${exc.id} 引用的工单 ${exc.ticketId} 不存在`);
+    }
+    if (!db.users.find((u) => u.id === exc.createdBy)) {
+      warnings.push(`催办例外 ${exc.id} 引用的创建人 ${exc.createdBy} 不存在`);
+    }
+    if (exc.revokedBy && !db.users.find((u) => u.id === exc.revokedBy)) {
+      warnings.push(`催办例外 ${exc.id} 引用的撤销人 ${exc.revokedBy} 不存在`);
+    }
+    if (!exc.revokedAt && exc.deadline && new Date(exc.deadline).getTime() <= Date.now()) {
+      const ticket = db.tickets.find((t) => t.id === exc.ticketId);
+      if (ticket && ticket.escalationException?.id === exc.id) {
+        ticket.escalationException = undefined;
+        ticket.updatedAt = new Date().toISOString();
+        warnings.push(`催办例外 ${exc.id} 已过期（截止时间 ${exc.deadline}），已自动从工单 ${exc.ticketId} 清除`);
+        fixed++;
+      }
     }
   }
 
@@ -413,6 +443,7 @@ function enrichTicket(ticket: Ticket): Ticket {
   const escalationOwner = ticket.escalationOwnerId
     ? db.users.find((u) => u.id === ticket.escalationOwnerId)
     : undefined;
+  const activeException = getActiveEscalationException(ticket.id);
   return {
     ...ticket,
     asset,
@@ -420,6 +451,7 @@ function enrichTicket(ticket: Ticket): Ticket {
     submitter: submitter ? toPublicUser(submitter) : undefined,
     assignee: assignee ? toPublicUser(assignee) : undefined,
     escalationOwner: escalationOwner ? toPublicUser(escalationOwner) : undefined,
+    escalationException: activeException || undefined,
   };
 }
 
@@ -461,12 +493,26 @@ export function updateTicket(id: string, updates: Partial<Ticket>): Ticket | und
       finalUpdates.escalatedAt = undefined;
       finalUpdates.escalationReason = undefined;
       finalUpdates.escalationOwnerId = undefined;
+      finalUpdates.escalationException = undefined;
+      const active = getActiveEscalationException(id);
+      if (active) {
+        active.revokedBy = 'system';
+        active.revokedAt = finalUpdates.updatedAt;
+        active.revokeReason = '工单已完成，自动撤销催办例外';
+      }
     }
     if (finalUpdates.status === 'reopened') {
       finalUpdates.isEscalated = false;
       finalUpdates.escalatedAt = undefined;
       finalUpdates.escalationReason = undefined;
       finalUpdates.escalationOwnerId = undefined;
+      finalUpdates.escalationException = undefined;
+      const active = getActiveEscalationException(id);
+      if (active) {
+        active.revokedBy = 'system';
+        active.revokedAt = finalUpdates.updatedAt;
+        active.revokeReason = '工单重新打开，自动撤销催办例外以重新评估催办';
+      }
     }
     db.tickets[index] = {
       ...db.tickets[index],
@@ -507,11 +553,145 @@ export function getEscalationRecordsByTicket(ticketId: string): EscalationRecord
   return db.escalationRecords.filter((r) => r.ticketId === ticketId);
 }
 
+export function getActiveEscalationException(ticketId: string): EscalationException | null {
+  const now = Date.now();
+  const exc = db.escalationExceptions.find(
+    (e) =>
+      e.ticketId === ticketId &&
+      !e.revokedAt &&
+      new Date(e.deadline).getTime() > now
+  );
+  return exc || null;
+}
+
+export function getEscalationExceptionsByTicket(ticketId: string): EscalationException[] {
+  return db.escalationExceptions
+    .filter((e) => e.ticketId === ticketId)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+export function createEscalationException(
+  ticketId: string,
+  type: EscalationExceptionType,
+  reason: string,
+  deadline: string,
+  operatorId: string
+): { success: boolean; exception?: EscalationException; error?: string } {
+  const ticket = db.tickets.find((t) => t.id === ticketId);
+  if (!ticket) return { success: false, error: '工单不存在' };
+  if (ticket.status === 'completed') return { success: false, error: '已完成的工单不能设置催办例外' };
+
+  if (!reason.trim()) return { success: false, error: '必须填写原因' };
+  if (!deadline) return { success: false, error: '必须设置截止时间' };
+  const deadlineTime = new Date(deadline).getTime();
+  if (isNaN(deadlineTime)) return { success: false, error: '截止时间格式无效' };
+  if (deadlineTime <= Date.now()) return { success: false, error: '截止时间必须晚于当前时间' };
+
+  const active = getActiveEscalationException(ticketId);
+  if (active) return { success: false, error: '该工单已有生效中的催办例外，请先撤销后再设置' };
+
+  const now = new Date().toISOString();
+  const exception: EscalationException = {
+    id: generateId(),
+    ticketId,
+    type,
+    reason: reason.trim(),
+    deadline,
+    createdBy: operatorId,
+    createdAt: now,
+  };
+  db.escalationExceptions.push(exception);
+
+  ticket.escalationException = exception;
+  ticket.updatedAt = now;
+
+  if (ticket.isEscalated) {
+    ticket.isEscalated = false;
+    ticket.escalatedAt = undefined;
+    ticket.escalationReason = undefined;
+    ticket.escalationOwnerId = undefined;
+
+    const openRecord = db.escalationRecords.find(
+      (r) => r.ticketId === ticketId && !r.deEscalatedAt
+    );
+    if (openRecord) {
+      openRecord.deEscalatedAt = now;
+      openRecord.deEscalatedBy = operatorId;
+      openRecord.deEscalationReason = `设置催办例外自动撤销催办：${reason.trim()}`;
+    }
+  }
+
+  const operator = db.users.find((u) => u.id === operatorId);
+  const operatorName = operator ? operator.name : '管理员';
+  const typeLabel = type === 'delay' ? '延后催办' : '免催办';
+  const content = `${operatorName} 设置${typeLabel}例外，原因：${reason.trim()}，截止时间：${new Date(deadline).toLocaleString('zh-CN', { hour12: false })}`;
+
+  db.timelineEvents.push({
+    id: generateId(),
+    ticketId,
+    type: 'escalation_exception_created',
+    userId: operatorId,
+    content,
+    createdAt: now,
+  });
+
+  saveDatabase(db);
+  return { success: true, exception };
+}
+
+export function revokeEscalationException(
+  ticketId: string,
+  revokeReason: string,
+  operatorId: string
+): { success: boolean; exception?: EscalationException; error?: string } {
+  const ticket = db.tickets.find((t) => t.id === ticketId);
+  if (!ticket) return { success: false, error: '工单不存在' };
+
+  const active = getActiveEscalationException(ticketId);
+  if (!active) return { success: false, error: '该工单没有生效中的催办例外' };
+
+  if (!revokeReason.trim()) return { success: false, error: '必须填写撤销原因' };
+
+  const now = new Date().toISOString();
+  active.revokedBy = operatorId;
+  active.revokedAt = now;
+  active.revokeReason = revokeReason.trim();
+
+  ticket.escalationException = undefined;
+  ticket.updatedAt = now;
+
+  const operator = db.users.find((u) => u.id === operatorId);
+  const operatorName = operator ? operator.name : '管理员';
+  const typeLabel = active.type === 'delay' ? '延后催办' : '免催办';
+  const content = `${operatorName} 撤销${typeLabel}例外，原因：${revokeReason.trim()}（原例外原因：${active.reason}，截止时间：${new Date(active.deadline).toLocaleString('zh-CN', { hour12: false })}）`;
+
+  db.timelineEvents.push({
+    id: generateId(),
+    ticketId,
+    type: 'escalation_exception_revoked',
+    userId: operatorId,
+    content,
+    createdAt: now,
+  });
+
+  saveDatabase(db);
+  return { success: true, exception: active };
+}
+
 export function checkAndTriggerEscalation(ticketId: string): { triggered: boolean; reason?: string } {
   const ticket = db.tickets.find((t) => t.id === ticketId);
   if (!ticket) return { triggered: false, reason: '工单不存在' };
   if (ticket.status === 'completed') return { triggered: false, reason: '已完成工单不触发催办' };
   if (ticket.isEscalated) return { triggered: false, reason: '已处于催办状态' };
+
+  const activeException = getActiveEscalationException(ticketId);
+  if (activeException) {
+    const typeLabel = activeException.type === 'delay' ? '延后催办' : '免催办';
+    return {
+      triggered: false,
+      reason: `工单有生效中的${typeLabel}例外（原因：${activeException.reason}，截止：${new Date(activeException.deadline).toLocaleString('zh-CN', { hour12: false })}）`,
+    };
+  }
 
   const priority = db.priorities.find((p) => p.id === ticket.priorityId);
   if (!priority || !priority.responseTimeMinutes || priority.responseTimeMinutes <= 0) {
@@ -538,10 +718,18 @@ export function checkAndTriggerEscalation(ticketId: string): { triggered: boolea
     const currentResponseTime = priority.responseTimeMinutes!;
     const responseTimeTightened = currentResponseTime < lastDeEscalated.responseTimeMinutesAtTrigger;
 
-    if (!reopenedAfter && !priorityChanged && !responseTimeTightened) {
+    // 重新触发条件4：催办例外被撤销或过期（例外引起的自动撤销催办后，例外不再生效）
+    const exceptionRevokedAfter = db.escalationExceptions.some(
+      (e) =>
+        e.ticketId === ticketId &&
+        e.revokedAt &&
+        new Date(e.revokedAt).getTime() > deEscalatedTime
+    );
+
+    if (!reopenedAfter && !priorityChanged && !responseTimeTightened && !exceptionRevokedAfter) {
       return {
         triggered: false,
-        reason: `已被管理员撤销催办，未满足重新触发条件（需重开、优先级变更或响应时限收紧）`,
+        reason: `已被管理员撤销催办，未满足重新触发条件（需重开、优先级变更、响应时限收紧或催办例外撤销）`,
       };
     }
   }
@@ -597,11 +785,21 @@ export function checkAndTriggerEscalation(ticketId: string): { triggered: boolea
 
 export function checkAllEscalations(): number {
   let count = 0;
-  const openTickets = db.tickets.filter((t) => t.status !== 'completed' && !t.isEscalated);
-  for (const t of openTickets) {
-    const result = checkAndTriggerEscalation(t.id);
-    if (result.triggered) count++;
+  const now = Date.now();
+  for (const ticket of db.tickets) {
+    if (ticket.status === 'completed') continue;
+    if (ticket.escalationException && !ticket.escalationException.revokedAt) {
+      if (new Date(ticket.escalationException.deadline).getTime() <= now) {
+        ticket.escalationException = undefined;
+        ticket.updatedAt = new Date().toISOString();
+      }
+    }
+    if (!ticket.isEscalated) {
+      const result = checkAndTriggerEscalation(ticket.id);
+      if (result.triggered) count++;
+    }
   }
+  if (count > 0) saveDatabase(db);
   return count;
 }
 

@@ -178,7 +178,7 @@
       "name": "?",
       "color": "#f97316",
       "sort": 3,
-      "responseTimeMinutes": 10,
+      "responseTimeMinutes": 0.01,
       "escalationOwnerId": "user_admin"
     },
     {
@@ -594,6 +594,281 @@
       "updatedAt": "2026-06-22T05:17:06.844Z",
       "assigneeId": "user_tech1",
       "isEscalated": false
+    },
+    {
+      "assetId": "asset_001",
+      "location": "[ExceptionTest] 测试位置",
+      "description": "[ExceptionTest] 催办例外测试工单 1782106695417",
+      "priorityId": "pri_high",
+      "id": "mqosbapq22rqgsw",
+      "status": "reopened",
+      "submitterId": "user_admin",
+      "createdAt": "2026-06-22T05:38:15.421Z",
+      "updatedAt": "2026-06-22T05:38:21.908Z",
+      "assigneeId": "user_tech1",
+      "isEscalated": true,
+      "escalatedAt": "2026-06-22T05:38:21.908Z",
+      "escalationOwnerId": "user_admin",
+      "escalationReason": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "reopenReason": "测试重开后例外清除"
+    },
+    {
+      "assetId": "asset_001",
+      "location": "[ExceptionTest] 校验测试",
+      "description": "[ExceptionTest] 校验测试工单",
+      "priorityId": "pri_high",
+      "id": "mqosbfksehwvfpe",
+      "status": "pending",
+      "submitterId": "user_admin",
+      "createdAt": "2026-06-22T05:38:21.724Z",
+      "updatedAt": "2026-06-22T05:39:38.443Z",
+      "isEscalated": true,
+      "escalatedAt": "2026-06-22T05:39:38.443Z",
+      "escalationOwnerId": "user_admin",
+      "escalationReason": "优先级「?」响应时限为 0.01 分钟，工单创建 1 分钟仍未处理完成，自动升级由 系统管理员 督办"
+    },
+    {
+      "assetId": "asset_002",
+      "location": "[ExceptionTest] 跨重启测试",
+      "description": "[ExceptionTest] 跨重启保留测试工单",
+      "priorityId": "pri_high",
+      "id": "mqosbfnugliet73",
+      "status": "pending",
+      "submitterId": "user_admin",
+      "createdAt": "2026-06-22T05:38:21.834Z",
+      "updatedAt": "2026-06-22T05:38:21.848Z",
+      "escalationException": {
+        "id": "mqosbfo8hx0ekw7",
+        "ticketId": "mqosbfnugliet73",
+        "type": "exempt",
+        "reason": "跨重启保留测试",
+        "deadline": "2026-06-23T05:38:21.844Z",
+        "createdBy": "user_admin",
+        "createdAt": "2026-06-22T05:38:21.848Z"
+      }
+    },
+    {
+      "assetId": "asset_001",
+      "location": "[ExceptionTest] 测试位置",
+      "description": "[ExceptionTest] 催办例外测试工单 1782106775705",
+      "priorityId": "pri_high",
+      "id": "mqosd0nxos87emw",
+      "status": "reopened",
+      "submitterId": "user_admin",
+      "createdAt": "2026-06-22T05:39:35.709Z",
+      "updatedAt": "2026-06-22T05:39:49.493Z",
+      "assigneeId": "user_tech1",
+      "isEscalated": true,
+      "escalatedAt": "2026-06-22T05:39:49.493Z",
+      "escalationReason": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "escalationOwnerId": "user_admin",
+      "reopenReason": "测试重开后例外清除"
+    },
+    {
+      "assetId": "asset_001",
+      "location": "[ExceptionTest] 校验测试",
+      "description": "[ExceptionTest] 校验测试工单",
+      "priorityId": "pri_high",
+      "id": "mqosdb4gdzrhlon",
+      "status": "pending",
+      "submitterId": "user_admin",
+      "createdAt": "2026-06-22T05:39:49.264Z",
+      "updatedAt": "2026-06-22T05:43:51.851Z",
+      "isEscalated": true,
+      "escalatedAt": "2026-06-22T05:43:51.851Z",
+      "escalationOwnerId": "user_admin",
+      "escalationReason": "优先级「?」响应时限为 0.01 分钟，工单创建 4 分钟仍未处理完成，自动升级由 系统管理员 督办"
+    },
+    {
+      "assetId": "asset_002",
+      "location": "[ExceptionTest] 跨重启测试",
+      "description": "[ExceptionTest] 跨重启保留测试工单",
+      "priorityId": "pri_high",
+      "id": "mqosdb8p58c8eta",
+      "status": "pending",
+      "submitterId": "user_admin",
+      "createdAt": "2026-06-22T05:39:49.417Z",
+      "updatedAt": "2026-06-22T05:39:49.427Z",
+      "escalationException": {
+        "id": "mqosdb8z91fcjtu",
+        "ticketId": "mqosdb8p58c8eta",
+        "type": "exempt",
+        "reason": "跨重启保留测试",
+        "deadline": "2026-06-23T05:39:49.424Z",
+        "createdBy": "user_admin",
+        "createdAt": "2026-06-22T05:39:49.427Z"
+      }
+    },
+    {
+      "assetId": "asset_001",
+      "location": "[ExceptionTest] 测试位置",
+      "description": "[ExceptionTest] 催办例外测试工单 1782107029069",
+      "priorityId": "pri_high",
+      "id": "mqosig5skp1ki8l",
+      "status": "reopened",
+      "submitterId": "user_admin",
+      "createdAt": "2026-06-22T05:43:49.071Z",
+      "updatedAt": "2026-06-22T05:44:04.144Z",
+      "assigneeId": "user_tech1",
+      "isEscalated": true,
+      "escalatedAt": "2026-06-22T05:44:04.144Z",
+      "escalationReason": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "escalationOwnerId": "user_admin",
+      "reopenReason": "测试重开后例外清除"
+    },
+    {
+      "assetId": "asset_001",
+      "location": "[ExceptionTest] 校验测试",
+      "description": "[ExceptionTest] 校验测试工单",
+      "priorityId": "pri_high",
+      "id": "mqosirokve9vkoy",
+      "status": "pending",
+      "submitterId": "user_admin",
+      "createdAt": "2026-06-22T05:44:04.004Z",
+      "updatedAt": "2026-06-22T05:50:35.688Z",
+      "isEscalated": true,
+      "escalatedAt": "2026-06-22T05:50:35.688Z",
+      "escalationOwnerId": "user_admin",
+      "escalationReason": "优先级「?」响应时限为 0.01 分钟，工单创建 6 分钟仍未处理完成，自动升级由 系统管理员 督办"
+    },
+    {
+      "assetId": "asset_002",
+      "location": "[ExceptionTest] 跨重启测试",
+      "description": "[ExceptionTest] 跨重启保留测试工单",
+      "priorityId": "pri_high",
+      "id": "mqosirqqor2merb",
+      "status": "pending",
+      "submitterId": "user_admin",
+      "createdAt": "2026-06-22T05:44:04.082Z",
+      "updatedAt": "2026-06-22T05:44:04.092Z",
+      "escalationException": {
+        "id": "mqosirr0b7cax5t",
+        "ticketId": "mqosirqqor2merb",
+        "type": "exempt",
+        "reason": "跨重启保留测试",
+        "deadline": "2026-06-23T05:44:04.088Z",
+        "createdBy": "user_admin",
+        "createdAt": "2026-06-22T05:44:04.092Z"
+      }
+    },
+    {
+      "assetId": "asset_001",
+      "location": "[review-1782107433085]-location",
+      "description": "[review-1782107433085] escalation exception reviewer flow",
+      "priorityId": "pri_high",
+      "id": "mqosr3zpk32yb7m",
+      "status": "processing",
+      "submitterId": "user_admin",
+      "createdAt": "2026-06-22T05:50:33.205Z",
+      "updatedAt": "2026-06-22T05:50:35.692Z",
+      "assigneeId": "user_tech1",
+      "isEscalated": true,
+      "escalatedAt": "2026-06-22T05:50:35.692Z",
+      "escalationOwnerId": "user_admin",
+      "escalationReason": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办"
+    },
+    {
+      "assetId": "asset_001",
+      "location": "[review-1782107498760]-location",
+      "description": "[review-1782107498760] escalation exception reviewer flow",
+      "priorityId": "pri_high",
+      "id": "mqossiofzxlwan4",
+      "status": "processing",
+      "submitterId": "user_admin",
+      "createdAt": "2026-06-22T05:51:38.895Z",
+      "updatedAt": "2026-06-22T05:51:42.208Z",
+      "assigneeId": "user_tech1",
+      "isEscalated": true,
+      "escalatedAt": "2026-06-22T05:51:42.208Z",
+      "escalationOwnerId": "user_admin",
+      "escalationReason": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办"
+    },
+    {
+      "assetId": "asset_001",
+      "location": "review-1782107851482-location",
+      "description": "review escalation exception reviewer flow 123456",
+      "priorityId": "pri_high",
+      "id": "mqot02quxh1o08r",
+      "status": "pending",
+      "submitterId": "user_admin",
+      "createdAt": "2026-06-22T05:57:31.494Z",
+      "updatedAt": "2026-06-22T05:57:33.216Z",
+      "isEscalated": true,
+      "escalatedAt": "2026-06-22T05:57:33.216Z",
+      "escalationOwnerId": "user_admin",
+      "escalationReason": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办"
+    },
+    {
+      "assetId": "asset_001",
+      "location": "manual-test",
+      "description": "manual ticket description 123456",
+      "priorityId": "pri_high",
+      "id": "mqot0f6qddjnxge",
+      "status": "pending",
+      "submitterId": "user_admin",
+      "createdAt": "2026-06-22T05:57:47.618Z",
+      "updatedAt": "2026-06-22T05:58:50.745Z",
+      "isEscalated": true,
+      "escalatedAt": "2026-06-22T05:58:50.745Z",
+      "escalationOwnerId": "user_admin",
+      "escalationReason": "优先级「?」响应时限为 0.01 分钟，工单创建 1 分钟仍未处理完成，自动升级由 系统管理员 督办"
+    },
+    {
+      "assetId": "asset_001",
+      "location": "review-1782107929012-location",
+      "description": "review escalation exception reviewer flow 123456",
+      "priorityId": "pri_high",
+      "id": "mqot1qkd6qhkya4",
+      "status": "reopened",
+      "submitterId": "user_admin",
+      "createdAt": "2026-06-22T05:58:49.021Z",
+      "updatedAt": "2026-06-22T05:58:50.872Z",
+      "assigneeId": "user_tech1",
+      "isEscalated": true,
+      "escalatedAt": "2026-06-22T05:58:50.872Z",
+      "escalationOwnerId": "user_admin",
+      "escalationReason": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "reopenReason": "review-reopen-check"
+    },
+    {
+      "assetId": "asset_002",
+      "location": "restart-1782107961383",
+      "description": "restart persistence check 123456",
+      "priorityId": "pri_high",
+      "id": "mqot2flgiep2l48",
+      "status": "pending",
+      "submitterId": "user_admin",
+      "createdAt": "2026-06-22T05:59:21.460Z",
+      "updatedAt": "2026-06-22T05:59:21.522Z",
+      "escalationException": {
+        "id": "mqot2fn6owbf3m7",
+        "ticketId": "mqot2flgiep2l48",
+        "type": "exempt",
+        "reason": "restart-persistence",
+        "deadline": "2026-06-22T15:59:21.5183381+08:00",
+        "createdBy": "user_admin",
+        "createdAt": "2026-06-22T05:59:21.522Z"
+      }
+    },
+    {
+      "assetId": "asset_002",
+      "location": "restart-1782107985695",
+      "description": "restart persistence check 123456",
+      "priorityId": "pri_high",
+      "id": "mqot2ydaigajjcv",
+      "status": "pending",
+      "submitterId": "user_admin",
+      "createdAt": "2026-06-22T05:59:45.790Z",
+      "updatedAt": "2026-06-22T05:59:45.862Z",
+      "escalationException": {
+        "id": "mqot2yfa8ejf29o",
+        "ticketId": "mqot2ydaigajjcv",
+        "type": "exempt",
+        "reason": "restart-persistence",
+        "deadline": "2026-06-22T15:59:45.8551862+08:00",
+        "createdBy": "user_admin",
+        "createdAt": "2026-06-22T05:59:45.862Z"
+      }
     }
   ],
   "timelineEvents": [
@@ -1988,6 +2263,558 @@
       "userId": "user_admin",
       "content": "管理员 系统管理员 撤销本次催办，原因：restart persistence check（原升级原因：优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办）",
       "createdAt": "2026-06-22T05:17:06.844Z"
+    },
+    {
+      "ticketId": "mqosbapq22rqgsw",
+      "type": "created",
+      "userId": "user_admin",
+      "content": "创建了报修工单",
+      "id": "mqosbapq3vdlxvr",
+      "createdAt": "2026-06-22T05:38:15.422Z"
+    },
+    {
+      "ticketId": "mqosbapq22rqgsw",
+      "type": "assigned",
+      "userId": "user_admin",
+      "content": "将工单派给 张工程师",
+      "id": "mqosbaq74pl2j0t",
+      "createdAt": "2026-06-22T05:38:15.439Z"
+    },
+    {
+      "ticketId": "mqosbapq22rqgsw",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 待派工 变更为 处理中",
+      "id": "mqosbaq7y4p0rw9",
+      "createdAt": "2026-06-22T05:38:15.439Z"
+    },
+    {
+      "id": "mqosbbw2j61lgj9",
+      "ticketId": "mqosbapq22rqgsw",
+      "type": "escalated",
+      "userId": "user_admin",
+      "content": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "createdAt": "2026-06-22T05:38:16.946Z"
+    },
+    {
+      "id": "mqosbbxg4t2682x",
+      "ticketId": "mqosbapq22rqgsw",
+      "type": "escalation_exception_created",
+      "userId": "user_admin",
+      "content": "系统管理员 设置延后催办例外，原因：等待供应商确认，截止时间：2026/6/22 14:38:16",
+      "createdAt": "2026-06-22T05:38:16.969Z"
+    },
+    {
+      "id": "mqosbd5dres6m0n",
+      "ticketId": "mqosbapq22rqgsw",
+      "type": "escalation_exception_revoked",
+      "userId": "user_admin",
+      "content": "系统管理员 撤销延后催办例外，原因：供应商已确认，恢复催办（原例外原因：等待供应商确认，截止时间：2026/6/22 14:38:16）",
+      "createdAt": "2026-06-22T05:38:18.576Z"
+    },
+    {
+      "id": "mqosbed7inv0hqk",
+      "ticketId": "mqosbapq22rqgsw",
+      "type": "escalation_exception_created",
+      "userId": "user_admin",
+      "content": "系统管理员 设置免催办例外，原因：配件需要定制，暂时无法处理，截止时间：2026/6/22 15:38:20",
+      "createdAt": "2026-06-22T05:38:20.155Z"
+    },
+    {
+      "ticketId": "mqosbfksehwvfpe",
+      "type": "created",
+      "userId": "user_admin",
+      "content": "创建了报修工单",
+      "id": "mqosbfksw6ksqcd",
+      "createdAt": "2026-06-22T05:38:21.724Z"
+    },
+    {
+      "ticketId": "mqosbapq22rqgsw",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 处理中 变更为 已完成（备注：完成测试）",
+      "id": "mqosbfms24ohsnl",
+      "createdAt": "2026-06-22T05:38:21.796Z"
+    },
+    {
+      "ticketId": "mqosbapq22rqgsw",
+      "type": "reopened",
+      "userId": "user_admin",
+      "content": "重新打开工单，原因：测试重开后例外清除",
+      "id": "mqosbfndgvd5xbi",
+      "createdAt": "2026-06-22T05:38:21.817Z"
+    },
+    {
+      "ticketId": "mqosbfnugliet73",
+      "type": "created",
+      "userId": "user_admin",
+      "content": "创建了报修工单",
+      "id": "mqosbfnupt3j14u",
+      "createdAt": "2026-06-22T05:38:21.834Z"
+    },
+    {
+      "id": "mqosbfo989lrlts",
+      "ticketId": "mqosbfnugliet73",
+      "type": "escalation_exception_created",
+      "userId": "user_admin",
+      "content": "系统管理员 设置免催办例外，原因：跨重启保留测试，截止时间：2026/6/23 13:38:21",
+      "createdAt": "2026-06-22T05:38:21.848Z"
+    },
+    {
+      "id": "mqosbfpw6ej6rax",
+      "ticketId": "mqosbapq22rqgsw",
+      "type": "escalated",
+      "userId": "user_admin",
+      "content": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "createdAt": "2026-06-22T05:38:21.908Z"
+    },
+    {
+      "ticketId": "mqosd0nxos87emw",
+      "type": "created",
+      "userId": "user_admin",
+      "content": "创建了报修工单",
+      "id": "mqosd0nxz9atwis",
+      "createdAt": "2026-06-22T05:39:35.709Z"
+    },
+    {
+      "ticketId": "mqosd0nxos87emw",
+      "type": "assigned",
+      "userId": "user_admin",
+      "content": "将工单派给 张工程师",
+      "id": "mqosd0ocxk4dh1z",
+      "createdAt": "2026-06-22T05:39:35.724Z"
+    },
+    {
+      "ticketId": "mqosd0nxos87emw",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 待派工 变更为 处理中",
+      "id": "mqosd0ocmhmorod",
+      "createdAt": "2026-06-22T05:39:35.724Z"
+    },
+    {
+      "id": "mqosd2rw0iithhf",
+      "ticketId": "mqosbfksehwvfpe",
+      "type": "escalated",
+      "userId": "user_admin",
+      "content": "优先级「?」响应时限为 0.01 分钟，工单创建 1 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "createdAt": "2026-06-22T05:39:38.443Z"
+    },
+    {
+      "id": "mqosd2slya8i1l1",
+      "ticketId": "mqosd0nxos87emw",
+      "type": "escalated",
+      "userId": "user_admin",
+      "content": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "createdAt": "2026-06-22T05:39:38.469Z"
+    },
+    {
+      "id": "mqosd3fhkqhm5dj",
+      "ticketId": "mqosd0nxos87emw",
+      "type": "escalation_exception_created",
+      "userId": "user_admin",
+      "content": "系统管理员 设置延后催办例外，原因：等待供应商确认，截止时间：2026/6/22 14:39:39",
+      "createdAt": "2026-06-22T05:39:39.293Z"
+    },
+    {
+      "id": "mqosd67mu59564r",
+      "ticketId": "mqosd0nxos87emw",
+      "type": "escalation_exception_revoked",
+      "userId": "user_admin",
+      "content": "系统管理员 撤销延后催办例外，原因：供应商已确认，恢复催办（原例外原因：等待供应商确认，截止时间：2026/6/22 14:39:39）",
+      "createdAt": "2026-06-22T05:39:42.898Z"
+    },
+    {
+      "id": "mqosd7ewa7584vd",
+      "ticketId": "mqosd0nxos87emw",
+      "type": "escalated",
+      "userId": "user_admin",
+      "content": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "createdAt": "2026-06-22T05:39:44.456Z"
+    },
+    {
+      "id": "mqosd7fg0ouufx5",
+      "ticketId": "mqosd0nxos87emw",
+      "type": "de_escalated",
+      "userId": "user_admin",
+      "content": "管理员 系统管理员 撤销本次催办，原因：测试免催办例外前先撤销催办（原升级原因：优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办）",
+      "createdAt": "2026-06-22T05:39:44.476Z"
+    },
+    {
+      "id": "mqosd7g3z5lh7jj",
+      "ticketId": "mqosd0nxos87emw",
+      "type": "escalation_exception_created",
+      "userId": "user_admin",
+      "content": "系统管理员 设置免催办例外，原因：配件需要定制，暂时无法处理，截止时间：2026/6/22 15:39:44",
+      "createdAt": "2026-06-22T05:39:44.499Z"
+    },
+    {
+      "ticketId": "mqosdb4gdzrhlon",
+      "type": "created",
+      "userId": "user_admin",
+      "content": "创建了报修工单",
+      "id": "mqosdb4grwrpoho",
+      "createdAt": "2026-06-22T05:39:49.264Z"
+    },
+    {
+      "ticketId": "mqosd0nxos87emw",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 处理中 变更为 已完成（备注：完成测试）",
+      "id": "mqosdb55i5nswji",
+      "createdAt": "2026-06-22T05:39:49.289Z"
+    },
+    {
+      "ticketId": "mqosd0nxos87emw",
+      "type": "reopened",
+      "userId": "user_admin",
+      "content": "重新打开工单，原因：测试重开后例外清除",
+      "id": "mqosdb5m5q55m26",
+      "createdAt": "2026-06-22T05:39:49.306Z"
+    },
+    {
+      "ticketId": "mqosdb8p58c8eta",
+      "type": "created",
+      "userId": "user_admin",
+      "content": "创建了报修工单",
+      "id": "mqosdb8p6wwmvpy",
+      "createdAt": "2026-06-22T05:39:49.417Z"
+    },
+    {
+      "id": "mqosdb8z1kqa7wk",
+      "ticketId": "mqosdb8p58c8eta",
+      "type": "escalation_exception_created",
+      "userId": "user_admin",
+      "content": "系统管理员 设置免催办例外，原因：跨重启保留测试，截止时间：2026/6/23 13:39:49",
+      "createdAt": "2026-06-22T05:39:49.427Z"
+    },
+    {
+      "id": "mqosdbatj0d35x3",
+      "ticketId": "mqosd0nxos87emw",
+      "type": "escalated",
+      "userId": "user_admin",
+      "content": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "createdAt": "2026-06-22T05:39:49.493Z"
+    },
+    {
+      "ticketId": "mqosig5skp1ki8l",
+      "type": "created",
+      "userId": "user_admin",
+      "content": "创建了报修工单",
+      "id": "mqosig5sndbbnac",
+      "createdAt": "2026-06-22T05:43:49.072Z"
+    },
+    {
+      "ticketId": "mqosig5skp1ki8l",
+      "type": "assigned",
+      "userId": "user_admin",
+      "content": "将工单派给 张工程师",
+      "id": "mqosig65hda4gan",
+      "createdAt": "2026-06-22T05:43:49.085Z"
+    },
+    {
+      "ticketId": "mqosig5skp1ki8l",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 待派工 变更为 处理中",
+      "id": "mqosig65h89as2l",
+      "createdAt": "2026-06-22T05:43:49.085Z"
+    },
+    {
+      "id": "mqosiiazs418znu",
+      "ticketId": "mqosdb4gdzrhlon",
+      "type": "escalated",
+      "userId": "user_admin",
+      "content": "优先级「?」响应时限为 0.01 分钟，工单创建 4 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "createdAt": "2026-06-22T05:43:51.851Z"
+    },
+    {
+      "id": "mqosiib2itwwxrn",
+      "ticketId": "mqosig5skp1ki8l",
+      "type": "escalated",
+      "userId": "user_admin",
+      "content": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "createdAt": "2026-06-22T05:43:51.854Z"
+    },
+    {
+      "id": "mqosiiyrdgoho82",
+      "ticketId": "mqosig5skp1ki8l",
+      "type": "escalation_exception_created",
+      "userId": "user_admin",
+      "content": "系统管理员 设置延后催办例外，原因：等待供应商确认，截止时间：2026/6/22 14:43:52",
+      "createdAt": "2026-06-22T05:43:52.707Z"
+    },
+    {
+      "id": "mqosim5eup2oqh5",
+      "ticketId": "mqosig5skp1ki8l",
+      "type": "escalation_exception_revoked",
+      "userId": "user_admin",
+      "content": "系统管理员 撤销延后催办例外，原因：供应商已确认，恢复催办（原例外原因：等待供应商确认，截止时间：2026/6/22 14:43:52）",
+      "createdAt": "2026-06-22T05:43:56.833Z"
+    },
+    {
+      "id": "mqosio7bsemxya6",
+      "ticketId": "mqosig5skp1ki8l",
+      "type": "escalated",
+      "userId": "user_admin",
+      "content": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "createdAt": "2026-06-22T05:43:59.495Z"
+    },
+    {
+      "id": "mqosiowotis9v4v",
+      "ticketId": "mqosig5skp1ki8l",
+      "type": "de_escalated",
+      "userId": "user_admin",
+      "content": "管理员 系统管理员 撤销本次催办，原因：测试免催办例外前先撤销催办（原升级原因：优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办）",
+      "createdAt": "2026-06-22T05:44:00.408Z"
+    },
+    {
+      "id": "mqosioxdsb8xvci",
+      "ticketId": "mqosig5skp1ki8l",
+      "type": "escalation_exception_created",
+      "userId": "user_admin",
+      "content": "系统管理员 设置免催办例外，原因：配件需要定制，暂时无法处理，截止时间：2026/6/22 15:44:00",
+      "createdAt": "2026-06-22T05:44:00.432Z"
+    },
+    {
+      "ticketId": "mqosirokve9vkoy",
+      "type": "created",
+      "userId": "user_admin",
+      "content": "创建了报修工单",
+      "id": "mqosirokwol2jmk",
+      "createdAt": "2026-06-22T05:44:04.004Z"
+    },
+    {
+      "ticketId": "mqosig5skp1ki8l",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 处理中 变更为 已完成（备注：完成测试）",
+      "id": "mqosirp7x7k9cxh",
+      "createdAt": "2026-06-22T05:44:04.027Z"
+    },
+    {
+      "ticketId": "mqosig5skp1ki8l",
+      "type": "reopened",
+      "userId": "user_admin",
+      "content": "重新打开工单，原因：测试重开后例外清除",
+      "id": "mqosirqdufck2oh",
+      "createdAt": "2026-06-22T05:44:04.069Z"
+    },
+    {
+      "ticketId": "mqosirqqor2merb",
+      "type": "created",
+      "userId": "user_admin",
+      "content": "创建了报修工单",
+      "id": "mqosirqq9ugv681",
+      "createdAt": "2026-06-22T05:44:04.082Z"
+    },
+    {
+      "id": "mqosirr0b4wya8p",
+      "ticketId": "mqosirqqor2merb",
+      "type": "escalation_exception_created",
+      "userId": "user_admin",
+      "content": "系统管理员 设置免催办例外，原因：跨重启保留测试，截止时间：2026/6/23 13:44:04",
+      "createdAt": "2026-06-22T05:44:04.092Z"
+    },
+    {
+      "id": "mqosirsg67tvqre",
+      "ticketId": "mqosig5skp1ki8l",
+      "type": "escalated",
+      "userId": "user_admin",
+      "content": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "createdAt": "2026-06-22T05:44:04.144Z"
+    },
+    {
+      "ticketId": "mqosr3zpk32yb7m",
+      "type": "created",
+      "userId": "user_admin",
+      "content": "创建了报修工单",
+      "id": "mqosr3zpzgeiiv6",
+      "createdAt": "2026-06-22T05:50:33.205Z"
+    },
+    {
+      "ticketId": "mqosr3zpk32yb7m",
+      "type": "assigned",
+      "userId": "user_admin",
+      "content": "将工单派给 张工程师",
+      "id": "mqosr403byqjg9s",
+      "createdAt": "2026-06-22T05:50:33.219Z"
+    },
+    {
+      "ticketId": "mqosr3zpk32yb7m",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 待派工 变更为 处理中",
+      "id": "mqosr40395kzcb6",
+      "createdAt": "2026-06-22T05:50:33.219Z"
+    },
+    {
+      "id": "mqosr5wpl3heh49",
+      "ticketId": "mqosirokve9vkoy",
+      "type": "escalated",
+      "userId": "user_admin",
+      "content": "优先级「?」响应时限为 0.01 分钟，工单创建 6 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "createdAt": "2026-06-22T05:50:35.688Z"
+    },
+    {
+      "id": "mqosr5wszh7binl",
+      "ticketId": "mqosr3zpk32yb7m",
+      "type": "escalated",
+      "userId": "user_admin",
+      "content": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "createdAt": "2026-06-22T05:50:35.692Z"
+    },
+    {
+      "ticketId": "mqossiofzxlwan4",
+      "type": "created",
+      "userId": "user_admin",
+      "content": "创建了报修工单",
+      "id": "mqossiog8usc17d",
+      "createdAt": "2026-06-22T05:51:38.896Z"
+    },
+    {
+      "ticketId": "mqossiofzxlwan4",
+      "type": "assigned",
+      "userId": "user_admin",
+      "content": "将工单派给 张工程师",
+      "id": "mqossiosao4h6z6",
+      "createdAt": "2026-06-22T05:51:38.908Z"
+    },
+    {
+      "ticketId": "mqossiofzxlwan4",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 待派工 变更为 处理中",
+      "id": "mqossiosqoqvph3",
+      "createdAt": "2026-06-22T05:51:38.908Z"
+    },
+    {
+      "id": "mqossl8h73x3sjl",
+      "ticketId": "mqossiofzxlwan4",
+      "type": "escalated",
+      "userId": "user_admin",
+      "content": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "createdAt": "2026-06-22T05:51:42.208Z"
+    },
+    {
+      "ticketId": "mqot02quxh1o08r",
+      "type": "created",
+      "userId": "user_admin",
+      "content": "创建了报修工单",
+      "id": "mqot02quigp7p3i",
+      "createdAt": "2026-06-22T05:57:31.494Z"
+    },
+    {
+      "id": "mqot042oxgnp9ps",
+      "ticketId": "mqot02quxh1o08r",
+      "type": "escalated",
+      "userId": "user_admin",
+      "content": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "createdAt": "2026-06-22T05:57:33.216Z"
+    },
+    {
+      "ticketId": "mqot0f6qddjnxge",
+      "type": "created",
+      "userId": "user_admin",
+      "content": "创建了报修工单",
+      "id": "mqot0f6qxvaiix4",
+      "createdAt": "2026-06-22T05:57:47.618Z"
+    },
+    {
+      "ticketId": "mqot1qkd6qhkya4",
+      "type": "created",
+      "userId": "user_admin",
+      "content": "创建了报修工单",
+      "id": "mqot1qkdyysz9fg",
+      "createdAt": "2026-06-22T05:58:49.021Z"
+    },
+    {
+      "ticketId": "mqot1qkd6qhkya4",
+      "type": "assigned",
+      "userId": "user_admin",
+      "content": "将工单派给 张工程师",
+      "id": "mqot1qktpnusauh",
+      "createdAt": "2026-06-22T05:58:49.037Z"
+    },
+    {
+      "ticketId": "mqot1qkd6qhkya4",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 待派工 变更为 处理中",
+      "id": "mqot1qktm9fmn40",
+      "createdAt": "2026-06-22T05:58:49.037Z"
+    },
+    {
+      "id": "mqot1rw9jd8c97f",
+      "ticketId": "mqot0f6qddjnxge",
+      "type": "escalated",
+      "userId": "user_admin",
+      "content": "优先级「?」响应时限为 0.01 分钟，工单创建 1 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "createdAt": "2026-06-22T05:58:50.745Z"
+    },
+    {
+      "id": "mqot1rwc1ew8jbh",
+      "ticketId": "mqot1qkd6qhkya4",
+      "type": "escalated",
+      "userId": "user_admin",
+      "content": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "createdAt": "2026-06-22T05:58:50.748Z"
+    },
+    {
+      "id": "mqot1rxkpmbq8vr",
+      "ticketId": "mqot1qkd6qhkya4",
+      "type": "escalation_exception_created",
+      "userId": "user_admin",
+      "content": "系统管理员 设置延后催办例外，原因：review-wait-vendor，截止时间：2026/6/22 14:58:50",
+      "createdAt": "2026-06-22T05:58:50.791Z"
+    },
+    {
+      "ticketId": "mqot1qkd6qhkya4",
+      "type": "status_changed",
+      "userId": "user_admin",
+      "content": "状态从 处理中 变更为 已完成（备注：review-complete）",
+      "id": "mqot1rze376s1fh",
+      "createdAt": "2026-06-22T05:58:50.858Z"
+    },
+    {
+      "ticketId": "mqot1qkd6qhkya4",
+      "type": "reopened",
+      "userId": "user_admin",
+      "content": "重新打开工单，原因：review-reopen-check",
+      "id": "mqot1rzmn1qaucq",
+      "createdAt": "2026-06-22T05:58:50.866Z"
+    },
+    {
+      "ticketId": "mqot2flgiep2l48",
+      "type": "created",
+      "userId": "user_admin",
+      "content": "创建了报修工单",
+      "id": "mqot2flgld06m5i",
+      "createdAt": "2026-06-22T05:59:21.460Z"
+    },
+    {
+      "id": "mqot2fn6ohe69jp",
+      "ticketId": "mqot2flgiep2l48",
+      "type": "escalation_exception_created",
+      "userId": "user_admin",
+      "content": "系统管理员 设置免催办例外，原因：restart-persistence，截止时间：2026/6/22 15:59:21",
+      "createdAt": "2026-06-22T05:59:21.522Z"
+    },
+    {
+      "ticketId": "mqot2ydaigajjcv",
+      "type": "created",
+      "userId": "user_admin",
+      "content": "创建了报修工单",
+      "id": "mqot2ydakfkl5iw",
+      "createdAt": "2026-06-22T05:59:45.790Z"
+    },
+    {
+      "id": "mqot2yfa6bp9552",
+      "ticketId": "mqot2ydaigajjcv",
+      "type": "escalation_exception_created",
+      "userId": "user_admin",
+      "content": "系统管理员 设置免催办例外，原因：restart-persistence，截止时间：2026/6/22 15:59:45",
+      "createdAt": "2026-06-22T05:59:45.862Z"
     }
   ],
   "escalationRecords": [
@@ -2316,6 +3143,320 @@
       "deEscalatedAt": "2026-06-22T05:17:06.844Z",
       "deEscalatedBy": "user_admin",
       "deEscalationReason": "restart persistence check"
+    },
+    {
+      "id": "mqosbbw2gy8n507",
+      "ticketId": "mqosbapq22rqgsw",
+      "priorityId": "pri_high",
+      "responseTimeMinutesAtTrigger": 0.01,
+      "escalatedAt": "2026-06-22T05:38:16.946Z",
+      "escalationReason": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "escalationOwnerId": "user_admin",
+      "originalAssigneeId": "user_tech1",
+      "deEscalatedAt": "2026-06-22T05:38:16.969Z",
+      "deEscalatedBy": "user_admin",
+      "deEscalationReason": "设置催办例外自动撤销催办：等待供应商确认"
+    },
+    {
+      "id": "mqosbfpwzzt6gvd",
+      "ticketId": "mqosbapq22rqgsw",
+      "priorityId": "pri_high",
+      "responseTimeMinutesAtTrigger": 0.01,
+      "escalatedAt": "2026-06-22T05:38:21.908Z",
+      "escalationReason": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "escalationOwnerId": "user_admin",
+      "originalAssigneeId": "user_tech1"
+    },
+    {
+      "id": "mqosd2rwubzc2ul",
+      "ticketId": "mqosbfksehwvfpe",
+      "priorityId": "pri_high",
+      "responseTimeMinutesAtTrigger": 0.01,
+      "escalatedAt": "2026-06-22T05:39:38.443Z",
+      "escalationReason": "优先级「?」响应时限为 0.01 分钟，工单创建 1 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "escalationOwnerId": "user_admin"
+    },
+    {
+      "id": "mqosd2slbeqphwc",
+      "ticketId": "mqosd0nxos87emw",
+      "priorityId": "pri_high",
+      "responseTimeMinutesAtTrigger": 0.01,
+      "escalatedAt": "2026-06-22T05:39:38.469Z",
+      "escalationReason": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "escalationOwnerId": "user_admin",
+      "originalAssigneeId": "user_tech1",
+      "deEscalatedAt": "2026-06-22T05:39:39.293Z",
+      "deEscalatedBy": "user_admin",
+      "deEscalationReason": "设置催办例外自动撤销催办：等待供应商确认"
+    },
+    {
+      "id": "mqosd7ewrybz9sc",
+      "ticketId": "mqosd0nxos87emw",
+      "priorityId": "pri_high",
+      "responseTimeMinutesAtTrigger": 0.01,
+      "escalatedAt": "2026-06-22T05:39:44.456Z",
+      "escalationReason": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "escalationOwnerId": "user_admin",
+      "originalAssigneeId": "user_tech1",
+      "deEscalatedAt": "2026-06-22T05:39:44.476Z",
+      "deEscalatedBy": "user_admin",
+      "deEscalationReason": "测试免催办例外前先撤销催办"
+    },
+    {
+      "id": "mqosdbati92j7sz",
+      "ticketId": "mqosd0nxos87emw",
+      "priorityId": "pri_high",
+      "responseTimeMinutesAtTrigger": 0.01,
+      "escalatedAt": "2026-06-22T05:39:49.493Z",
+      "escalationReason": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "escalationOwnerId": "user_admin",
+      "originalAssigneeId": "user_tech1"
+    },
+    {
+      "id": "mqosiiaz7036vsc",
+      "ticketId": "mqosdb4gdzrhlon",
+      "priorityId": "pri_high",
+      "responseTimeMinutesAtTrigger": 0.01,
+      "escalatedAt": "2026-06-22T05:43:51.851Z",
+      "escalationReason": "优先级「?」响应时限为 0.01 分钟，工单创建 4 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "escalationOwnerId": "user_admin"
+    },
+    {
+      "id": "mqosiib2artkfo6",
+      "ticketId": "mqosig5skp1ki8l",
+      "priorityId": "pri_high",
+      "responseTimeMinutesAtTrigger": 0.01,
+      "escalatedAt": "2026-06-22T05:43:51.854Z",
+      "escalationReason": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "escalationOwnerId": "user_admin",
+      "originalAssigneeId": "user_tech1",
+      "deEscalatedAt": "2026-06-22T05:43:52.707Z",
+      "deEscalatedBy": "user_admin",
+      "deEscalationReason": "设置催办例外自动撤销催办：等待供应商确认"
+    },
+    {
+      "id": "mqosio7bu1f6s3o",
+      "ticketId": "mqosig5skp1ki8l",
+      "priorityId": "pri_high",
+      "responseTimeMinutesAtTrigger": 0.01,
+      "escalatedAt": "2026-06-22T05:43:59.495Z",
+      "escalationReason": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "escalationOwnerId": "user_admin",
+      "originalAssigneeId": "user_tech1",
+      "deEscalatedAt": "2026-06-22T05:44:00.408Z",
+      "deEscalatedBy": "user_admin",
+      "deEscalationReason": "测试免催办例外前先撤销催办"
+    },
+    {
+      "id": "mqosirsgozjv8lo",
+      "ticketId": "mqosig5skp1ki8l",
+      "priorityId": "pri_high",
+      "responseTimeMinutesAtTrigger": 0.01,
+      "escalatedAt": "2026-06-22T05:44:04.144Z",
+      "escalationReason": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "escalationOwnerId": "user_admin",
+      "originalAssigneeId": "user_tech1"
+    },
+    {
+      "id": "mqosr5wp126tv60",
+      "ticketId": "mqosirokve9vkoy",
+      "priorityId": "pri_high",
+      "responseTimeMinutesAtTrigger": 0.01,
+      "escalatedAt": "2026-06-22T05:50:35.688Z",
+      "escalationReason": "优先级「?」响应时限为 0.01 分钟，工单创建 6 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "escalationOwnerId": "user_admin"
+    },
+    {
+      "id": "mqosr5wskkqackt",
+      "ticketId": "mqosr3zpk32yb7m",
+      "priorityId": "pri_high",
+      "responseTimeMinutesAtTrigger": 0.01,
+      "escalatedAt": "2026-06-22T05:50:35.692Z",
+      "escalationReason": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "escalationOwnerId": "user_admin",
+      "originalAssigneeId": "user_tech1"
+    },
+    {
+      "id": "mqossl8ggami1hl",
+      "ticketId": "mqossiofzxlwan4",
+      "priorityId": "pri_high",
+      "responseTimeMinutesAtTrigger": 0.01,
+      "escalatedAt": "2026-06-22T05:51:42.208Z",
+      "escalationReason": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "escalationOwnerId": "user_admin",
+      "originalAssigneeId": "user_tech1"
+    },
+    {
+      "id": "mqot042oi2dyobr",
+      "ticketId": "mqot02quxh1o08r",
+      "priorityId": "pri_high",
+      "responseTimeMinutesAtTrigger": 0.01,
+      "escalatedAt": "2026-06-22T05:57:33.216Z",
+      "escalationReason": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "escalationOwnerId": "user_admin"
+    },
+    {
+      "id": "mqot1rw9dr0w8zn",
+      "ticketId": "mqot0f6qddjnxge",
+      "priorityId": "pri_high",
+      "responseTimeMinutesAtTrigger": 0.01,
+      "escalatedAt": "2026-06-22T05:58:50.745Z",
+      "escalationReason": "优先级「?」响应时限为 0.01 分钟，工单创建 1 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "escalationOwnerId": "user_admin"
+    },
+    {
+      "id": "mqot1rwc7sczsaf",
+      "ticketId": "mqot1qkd6qhkya4",
+      "priorityId": "pri_high",
+      "responseTimeMinutesAtTrigger": 0.01,
+      "escalatedAt": "2026-06-22T05:58:50.748Z",
+      "escalationReason": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "escalationOwnerId": "user_admin",
+      "originalAssigneeId": "user_tech1",
+      "deEscalatedAt": "2026-06-22T05:58:50.791Z",
+      "deEscalatedBy": "user_admin",
+      "deEscalationReason": "设置催办例外自动撤销催办：review-wait-vendor"
+    },
+    {
+      "id": "mqot1rzsn5h2bqx",
+      "ticketId": "mqot1qkd6qhkya4",
+      "priorityId": "pri_high",
+      "responseTimeMinutesAtTrigger": 0.01,
+      "escalatedAt": "2026-06-22T05:58:50.872Z",
+      "escalationReason": "优先级「?」响应时限为 0.01 分钟，工单创建 0 分钟仍未处理完成，自动升级由 系统管理员 督办",
+      "escalationOwnerId": "user_admin",
+      "originalAssigneeId": "user_tech1"
+    }
+  ],
+  "escalationExceptions": [
+    {
+      "id": "mqosbbwpvy0c0lq",
+      "ticketId": "mqosbapq22rqgsw",
+      "type": "delay",
+      "reason": "等待供应商确认",
+      "deadline": "2026-06-22T06:38:16.963Z",
+      "createdBy": "user_admin",
+      "createdAt": "2026-06-22T05:38:16.969Z",
+      "revokedBy": "user_admin",
+      "revokedAt": "2026-06-22T05:38:18.576Z",
+      "revokeReason": "供应商已确认，恢复催办"
+    },
+    {
+      "id": "mqosbed7ccjyree",
+      "ticketId": "mqosbapq22rqgsw",
+      "type": "exempt",
+      "reason": "配件需要定制，暂时无法处理",
+      "deadline": "2026-06-22T07:38:20.152Z",
+      "createdBy": "user_admin",
+      "createdAt": "2026-06-22T05:38:20.155Z",
+      "revokedBy": "system",
+      "revokedAt": "2026-06-22T05:38:21.794Z",
+      "revokeReason": "工单已完成，自动撤销催办例外"
+    },
+    {
+      "id": "mqosbfo8hx0ekw7",
+      "ticketId": "mqosbfnugliet73",
+      "type": "exempt",
+      "reason": "跨重启保留测试",
+      "deadline": "2026-06-23T05:38:21.844Z",
+      "createdBy": "user_admin",
+      "createdAt": "2026-06-22T05:38:21.848Z"
+    },
+    {
+      "id": "mqosd3fhjszzujd",
+      "ticketId": "mqosd0nxos87emw",
+      "type": "delay",
+      "reason": "等待供应商确认",
+      "deadline": "2026-06-22T06:39:39.263Z",
+      "createdBy": "user_admin",
+      "createdAt": "2026-06-22T05:39:39.293Z",
+      "revokedBy": "user_admin",
+      "revokedAt": "2026-06-22T05:39:42.898Z",
+      "revokeReason": "供应商已确认，恢复催办"
+    },
+    {
+      "id": "mqosd7g3qhi8r77",
+      "ticketId": "mqosd0nxos87emw",
+      "type": "exempt",
+      "reason": "配件需要定制，暂时无法处理",
+      "deadline": "2026-06-22T07:39:44.496Z",
+      "createdBy": "user_admin",
+      "createdAt": "2026-06-22T05:39:44.499Z",
+      "revokedBy": "system",
+      "revokedAt": "2026-06-22T05:39:49.287Z",
+      "revokeReason": "工单已完成，自动撤销催办例外"
+    },
+    {
+      "id": "mqosdb8z91fcjtu",
+      "ticketId": "mqosdb8p58c8eta",
+      "type": "exempt",
+      "reason": "跨重启保留测试",
+      "deadline": "2026-06-23T05:39:49.424Z",
+      "createdBy": "user_admin",
+      "createdAt": "2026-06-22T05:39:49.427Z"
+    },
+    {
+      "id": "mqosiiyruebu0wa",
+      "ticketId": "mqosig5skp1ki8l",
+      "type": "delay",
+      "reason": "等待供应商确认",
+      "deadline": "2026-06-22T06:43:52.677Z",
+      "createdBy": "user_admin",
+      "createdAt": "2026-06-22T05:43:52.707Z",
+      "revokedBy": "user_admin",
+      "revokedAt": "2026-06-22T05:43:56.833Z",
+      "revokeReason": "供应商已确认，恢复催办"
+    },
+    {
+      "id": "mqosioxc2dmwl2v",
+      "ticketId": "mqosig5skp1ki8l",
+      "type": "exempt",
+      "reason": "配件需要定制，暂时无法处理",
+      "deadline": "2026-06-22T07:44:00.428Z",
+      "createdBy": "user_admin",
+      "createdAt": "2026-06-22T05:44:00.432Z",
+      "revokedBy": "system",
+      "revokedAt": "2026-06-22T05:44:04.024Z",
+      "revokeReason": "工单已完成，自动撤销催办例外"
+    },
+    {
+      "id": "mqosirr0b7cax5t",
+      "ticketId": "mqosirqqor2merb",
+      "type": "exempt",
+      "reason": "跨重启保留测试",
+      "deadline": "2026-06-23T05:44:04.088Z",
+      "createdBy": "user_admin",
+      "createdAt": "2026-06-22T05:44:04.092Z"
+    },
+    {
+      "id": "mqot1rxjyfwbcmy",
+      "ticketId": "mqot1qkd6qhkya4",
+      "type": "delay",
+      "reason": "review-wait-vendor",
+      "deadline": "2026-06-22T14:58:50.7806300+08:00",
+      "createdBy": "user_admin",
+      "createdAt": "2026-06-22T05:58:50.791Z",
+      "revokedBy": "system",
+      "revokedAt": "2026-06-22T05:58:50.855Z",
+      "revokeReason": "工单已完成，自动撤销催办例外"
+    },
+    {
+      "id": "mqot2fn6owbf3m7",
+      "ticketId": "mqot2flgiep2l48",
+      "type": "exempt",
+      "reason": "restart-persistence",
+      "deadline": "2026-06-22T15:59:21.5183381+08:00",
+      "createdBy": "user_admin",
+      "createdAt": "2026-06-22T05:59:21.522Z"
+    },
+    {
+      "id": "mqot2yfa8ejf29o",
+      "ticketId": "mqot2ydaigajjcv",
+      "type": "exempt",
+      "reason": "restart-persistence",
+      "deadline": "2026-06-22T15:59:45.8551862+08:00",
+      "createdBy": "user_admin",
+      "createdAt": "2026-06-22T05:59:45.862Z"
     }
   ]
 }

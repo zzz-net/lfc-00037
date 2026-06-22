@@ -36,6 +36,8 @@ export function getTimelineEventLabel(type: TimelineEventType): string {
     reopened: '重新打开',
     escalated: '催办升级',
     de_escalated: '撤销催办',
+    escalation_exception_created: '设置催办例外',
+    escalation_exception_revoked: '撤销催办例外',
   };
   return labels[type] || type;
 }
@@ -49,6 +51,8 @@ export function getTimelineEventIconType(type: TimelineEventType): string {
     reopened: 'rotate-ccw',
     escalated: 'megaphone',
     de_escalated: 'undo-2',
+    escalation_exception_created: 'shield',
+    escalation_exception_revoked: 'shield-off',
   };
   return icons[type] || 'circle';
 }
@@ -73,6 +77,11 @@ export function copyToClipboard(text: string): void {
 
 export function getEscalationBadgeClass(): string {
   return 'bg-rose-100 text-rose-700 border border-rose-200';
+}
+
+export function getExceptionBadgeClass(type: 'delay' | 'exempt'): string {
+  if (type === 'delay') return 'bg-amber-100 text-amber-700 border border-amber-200';
+  return 'bg-teal-100 text-teal-700 border border-teal-200';
 }
 
 export function formatMinutes(minutes: number | undefined | null): string {

@@ -1,4 +1,4 @@
-import { Search, X, Filter, Megaphone } from 'lucide-react';
+import { Search, X, Filter, Megaphone, Shield } from 'lucide-react';
 import { useTicketStore, useConfigStore } from '../../store';
 import type { TicketFilters as TF, TicketStatus } from '../../../shared/types';
 import { STATUS_LABELS } from '../../../shared/types';
@@ -32,7 +32,7 @@ export default function TicketFilters({ showSearch = true, showStatus = true }: 
 
   const hasFilters = Object.keys(filters).length > 0;
 
-  const gridCols = showStatus ? 'lg:grid-cols-7' : 'lg:grid-cols-6';
+  const gridCols = showStatus ? 'lg:grid-cols-8' : 'lg:grid-cols-7';
 
   return (
     <div className="card p-4 mb-6">
@@ -158,6 +158,27 @@ export default function TicketFilters({ showSearch = true, showStatus = true }: 
             <option value="">全部</option>
             <option value="yes">已催办</option>
             <option value="no">未催办</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="label flex items-center gap-1">
+            <Shield className="w-3 h-3 text-amber-500" />
+            催办例外
+          </label>
+          <select
+            className="select"
+            value={filters.hasException || ''}
+            onChange={(e) =>
+              updateFilter(
+                'hasException',
+                e.target.value === '' ? undefined : (e.target.value as 'yes' | 'no')
+              )
+            }
+          >
+            <option value="">全部</option>
+            <option value="yes">有例外</option>
+            <option value="no">无例外</option>
           </select>
         </div>
       </div>

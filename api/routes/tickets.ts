@@ -13,6 +13,9 @@ import {
   checkAllEscalations,
   deEscalateTicket,
   getEscalationRecordsByTicket,
+  createEscalationException,
+  revokeEscalationException,
+  getEscalationExceptionsByTicket,
 } from '../data/store.js';
 import { authMiddleware, requireRoles, type AuthRequest } from '../middleware/auth.js';
 import { STATUS_TRANSITIONS, STATUS_LABELS } from '../../shared/types.js';
@@ -24,7 +27,7 @@ router.use(authMiddleware);
 
 router.get('/', (req: AuthRequest, res: Response): void => {
   checkAllEscalations();
-  const { assetId, location, priorityId, assigneeId, status, groupId, search, isEscalated } = req.query;
+  const { assetId, location, priorityId, assigneeId, status, groupId, search, isEscalated, hasException } = req.query;
   let tickets = getTickets();
 
   const user = req.user!;
@@ -70,6 +73,11 @@ router.get('/', (req: AuthRequest, res: Response): void => {
   } else if (isEscalated === 'no') {
     tickets = tickets.filter((t) => !t.isEscalated);
   }
+  if (hasException === 'yes') {
+    tickets = tickets.filter((t) => t.escalationException);
+  } else if (hasException === 'no') {
+    tickets = tickets.filter((t) => !t.escalationException);
+  }
 
   tickets.sort((a, b) => {
     const aEsc = a.isEscalated ? 1 : 0;
@@ -95,7 +103,8 @@ router.get('/:id', (req: AuthRequest, res: Response): void => {
   }
   const timeline = getTimelineEvents(ticket.id);
   const escalationRecords = getEscalationRecordsByTicket(ticket.id);
-  res.json({ success: true, data: { ticket, timeline, escalationRecords } });
+  const escalationExceptions = getEscalationExceptionsByTicket(ticket.id);
+  res.json({ success: true, data: { ticket, timeline, escalationRecords, escalationExceptions } });
 });
 
 router.post('/', (req: AuthRequest, res: Response): void => {
@@ -330,6 +339,60 @@ function _handleAssign(req: AuthRequest, res: Response): void {
   persist();
   res.json({ success: true, data: { ticket: updated } });
 }
+
+router.post('/:id/escalation-exception', requireRoles('admin'), (req: AuthRequest, res: Response): void => {
+  const { type, reason, deadline } = req.body;
+  if (!type || (type !== 'delay' && type !== 'exempt')) {
+    res.status(400).json({ success: false, error: '例外类型必须为 delay（延后催办）或 exempt（免催办）' });
+    return;
+  }
+  if (!reason || !String(reason).trim()) {
+    res.status(400).json({ success: false, error: '必须填写设置例外的原因' });
+    return;
+  }
+  if (!deadline) {
+    res.status(400).json({ success: false, error: '必须设置截止时间' });
+    return;
+  }
+  const user = req.user!;
+  const result = createEscalationException(req.params.id, type, String(reason).trim(), deadline, user.id);
+  if (!result.success) {
+    res.status(400).json({ success: false, error: result.error });
+    return;
+  }
+  persist();
+  const ticket = getTicketById(req.params.id);
+  const timeline = getTimelineEvents(req.params.id);
+  const escalationRecords = getEscalationRecordsByTicket(req.params.id);
+  const escalationExceptions = getEscalationExceptionsByTicket(req.params.id);
+  res.json({
+    success: true,
+    data: { ticket, timeline, escalationRecords, escalationExceptions },
+  });
+});
+
+router.delete('/:id/escalation-exception', requireRoles('admin'), (req: AuthRequest, res: Response): void => {
+  const { reason } = req.body;
+  if (!reason || !String(reason).trim()) {
+    res.status(400).json({ success: false, error: '必须填写撤销例外的原因' });
+    return;
+  }
+  const user = req.user!;
+  const result = revokeEscalationException(req.params.id, String(reason).trim(), user.id);
+  if (!result.success) {
+    res.status(400).json({ success: false, error: result.error });
+    return;
+  }
+  persist();
+  const ticket = getTicketById(req.params.id);
+  const timeline = getTimelineEvents(req.params.id);
+  const escalationRecords = getEscalationRecordsByTicket(req.params.id);
+  const escalationExceptions = getEscalationExceptionsByTicket(req.params.id);
+  res.json({
+    success: true,
+    data: { ticket, timeline, escalationRecords, escalationExceptions },
+  });
+});
 
 router.post('/:id/de-escalate', requireRoles('admin'), (req: AuthRequest, res: Response): void => {
   const { reason } = req.body;

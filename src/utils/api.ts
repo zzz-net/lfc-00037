@@ -7,6 +7,7 @@ import type {
   Priority,
   TicketFilters,
   TicketStatus,
+  EscalationException,
 } from '../../shared/types';
 
 const API_BASE = '/api';
@@ -123,6 +124,25 @@ export async function addTicketNote(id: string, note: string) {
 export async function deEscalateTicket(id: string, reason: string) {
   return request<{ ticket: Ticket; timeline: TimelineEvent[] }>(`/tickets/${id}/de-escalate`, {
     method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export async function createEscalationException(
+  id: string,
+  type: 'delay' | 'exempt',
+  reason: string,
+  deadline: string
+) {
+  return request<{ ticket: Ticket; timeline: TimelineEvent[]; escalationExceptions: EscalationException[] }>(`/tickets/${id}/escalation-exception`, {
+    method: 'POST',
+    body: JSON.stringify({ type, reason, deadline }),
+  });
+}
+
+export async function revokeEscalationException(id: string, reason: string) {
+  return request<{ ticket: Ticket; timeline: TimelineEvent[]; escalationExceptions: EscalationException[] }>(`/tickets/${id}/escalation-exception`, {
+    method: 'DELETE',
     body: JSON.stringify({ reason }),
   });
 }

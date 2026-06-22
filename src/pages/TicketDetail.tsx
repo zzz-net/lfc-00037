@@ -17,9 +17,11 @@ import {
   Send,
   Megaphone,
   Undo2,
+  Shield,
+  ShieldOff,
 } from 'lucide-react';
 import { useTicketStore, useConfigStore, useAuthStore } from '../store';
-import { getStatusBadgeClass, getStatusLabel, formatDateTime, getEscalationBadgeClass } from '../utils/helpers';
+import { getStatusBadgeClass, getStatusLabel, formatDateTime, getEscalationBadgeClass, getExceptionBadgeClass } from '../utils/helpers';
 import Modal from '../components/common/Modal';
 import { showToastGlobal } from '../components/layout/MainLayout';
 import type { TicketStatus } from '../../shared/types';
@@ -27,7 +29,7 @@ import type { TicketStatus } from '../../shared/types';
 export default function TicketDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { currentTicket, timeline, escalationRecords, fetchTicketDetail, assignTicket, updateTicketStatus, addNote, revokeEscalation, isLoading } = useTicketStore();
+  const { currentTicket, timeline, escalationRecords, escalationExceptions, fetchTicketDetail, assignTicket, updateTicketStatus, addNote, revokeEscalation, createEscalationException, revokeEscalationException, isLoading } = useTicketStore();
   const { technicians } = useConfigStore();
   const { user } = useAuthStore();
 
@@ -40,6 +42,12 @@ export default function TicketDetail() {
   const [actionNote, setActionNote] = useState('');
   const [deEscalateModalOpen, setDeEscalateModalOpen] = useState(false);
   const [deEscalateReason, setDeEscalateReason] = useState('');
+  const [exceptionModalOpen, setExceptionModalOpen] = useState(false);
+  const [exceptionType, setExceptionType] = useState<'delay' | 'exempt'>('delay');
+  const [exceptionReason, setExceptionReason] = useState('');
+  const [exceptionDeadline, setExceptionDeadline] = useState('');
+  const [revokeExceptionModalOpen, setRevokeExceptionModalOpen] = useState(false);
+  const [revokeExceptionReason, setRevokeExceptionReason] = useState('');
 
   useEffect(() => {
     if (id) fetchTicketDetail(id);
@@ -104,10 +112,37 @@ export default function TicketDetail() {
     }
   };
 
+  const handleCreateException = async () => {
+    if (!id || !exceptionReason.trim() || !exceptionDeadline) return;
+    try {
+      await createEscalationException(id, exceptionType, exceptionReason, exceptionDeadline);
+      showToastGlobal(exceptionType === 'delay' ? '已设置延后催办' : '已设置免催办', 'success');
+      setExceptionModalOpen(false);
+      setExceptionReason('');
+      setExceptionDeadline('');
+      setExceptionType('delay');
+    } catch (err) {
+      showToastGlobal(err instanceof Error ? err.message : '设置催办例外失败', 'error');
+    }
+  };
+
+  const handleRevokeException = async () => {
+    if (!id || !revokeExceptionReason.trim()) return;
+    try {
+      await revokeEscalationException(id, revokeExceptionReason);
+      showToastGlobal('催办例外已撤销，系统将重新评估催办', 'success');
+      setRevokeExceptionModalOpen(false);
+      setRevokeExceptionReason('');
+    } catch (err) {
+      showToastGlobal(err instanceof Error ? err.message : '撤销催办例外失败', 'error');
+    }
+  };
+
   const canAssign = user?.role === 'admin' || user?.role === 'technician';
   const canClose = user?.role === 'admin' || user?.role === 'technician';
   const canReopen = user?.role === 'admin';
   const canDeEscalate = user?.role === 'admin';
+  const canSetException = user?.role === 'admin';
   const isAssignedToCurrent = currentTicket?.assigneeId === user?.id || user?.role === 'admin';
 
   if (!currentTicket && !isLoading) {
@@ -170,6 +205,12 @@ export default function TicketDetail() {
                       催办升级中
                     </span>
                   )}
+                  {t.escalationException && !t.isEscalated && (
+                    <span className={`badge ${getExceptionBadgeClass(t.escalationException.type)} flex items-center gap-1`} title={t.escalationException.reason}>
+                      <Shield className="w-3.5 h-3.5" />
+                      {t.escalationException.type === 'delay' ? '延后催办' : '免催办'}
+                    </span>
+                  )}
                 </div>
                 <h1 className="text-xl font-bold text-slate-900">{t.asset?.name || '未知设备'}</h1>
                 <p className="text-sm text-slate-500 font-mono">{t.asset?.code}</p>
@@ -179,6 +220,18 @@ export default function TicketDetail() {
                   <button onClick={() => setDeEscalateModalOpen(true)} className="btn-secondary bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100">
                     <Undo2 className="w-4 h-4" />
                     撤销催办
+                  </button>
+                )}
+                {canSetException && !t.escalationException && t.status !== 'completed' && (
+                  <button onClick={() => setExceptionModalOpen(true)} className="btn-secondary bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100">
+                    <Shield className="w-4 h-4" />
+                    催办例外
+                  </button>
+                )}
+                {canSetException && t.escalationException && (
+                  <button onClick={() => setRevokeExceptionModalOpen(true)} className="btn-secondary bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100">
+                    <ShieldOff className="w-4 h-4" />
+                    撤销例外
                   </button>
                 )}
                 {canAssign && (t.status === 'pending' || t.status === 'reopened') && (
@@ -217,6 +270,29 @@ export default function TicketDetail() {
                       <User className="w-3.5 h-3.5" />
                       {t.escalationOwner?.name || '-'}
                     </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {t.escalationException && (
+              <div className={`mb-4 p-4 rounded-xl border ${t.escalationException.type === 'delay' ? 'bg-amber-50 border-amber-200' : 'bg-teal-50 border-teal-200'}`}>
+                <h4 className={`font-semibold mb-2 flex items-center gap-2 ${t.escalationException.type === 'delay' ? 'text-amber-800' : 'text-teal-800'}`}>
+                  <Shield className="w-4 h-4" />
+                  催办例外 — {t.escalationException.type === 'delay' ? '延后催办' : '免催办'}
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div className="col-span-2">
+                    <p className={`text-xs mb-0.5 ${t.escalationException.type === 'delay' ? 'text-amber-500' : 'text-teal-500'}`}>原因</p>
+                    <p className={`font-medium ${t.escalationException.type === 'delay' ? 'text-amber-900' : 'text-teal-900'}`}>{t.escalationException.reason}</p>
+                  </div>
+                  <div>
+                    <p className={`text-xs mb-0.5 ${t.escalationException.type === 'delay' ? 'text-amber-500' : 'text-teal-500'}`}>截止时间</p>
+                    <p className={`font-medium ${t.escalationException.type === 'delay' ? 'text-amber-900' : 'text-teal-900'}`}>{formatDateTime(t.escalationException.deadline)}</p>
+                  </div>
+                  <div>
+                    <p className={`text-xs mb-0.5 ${t.escalationException.type === 'delay' ? 'text-amber-500' : 'text-teal-500'}`}>设置时间</p>
+                    <p className={`font-medium ${t.escalationException.type === 'delay' ? 'text-amber-900' : 'text-teal-900'}`}>{formatDateTime(t.escalationException.createdAt)}</p>
                   </div>
                 </div>
               </div>
@@ -345,11 +421,15 @@ export default function TicketDetail() {
                       event.type === 'assigned' ? 'bg-indigo-500 border-indigo-100' :
                       event.type === 'escalated' ? 'bg-rose-500 border-rose-100' :
                       event.type === 'de_escalated' ? 'bg-purple-500 border-purple-100' :
+                      event.type === 'escalation_exception_created' ? 'bg-amber-500 border-amber-100' :
+                      event.type === 'escalation_exception_revoked' ? 'bg-teal-500 border-teal-100' :
                       'bg-blue-500 border-blue-100'
                     }`} />
                     <div className={`rounded-lg p-3 ${
                       event.type === 'escalated' ? 'bg-rose-50 border border-rose-100' :
                       event.type === 'de_escalated' ? 'bg-purple-50 border border-purple-100' :
+                      event.type === 'escalation_exception_created' ? 'bg-amber-50 border border-amber-100' :
+                      event.type === 'escalation_exception_revoked' ? 'bg-teal-50 border border-teal-100' :
                       'bg-slate-50'
                     }`}>
                       <div className="flex items-center justify-between mb-1">
@@ -360,6 +440,8 @@ export default function TicketDetail() {
                         event.type === 'reopened' ? 'text-orange-700 font-medium' :
                         event.type === 'escalated' ? 'text-rose-700 font-medium' :
                         event.type === 'de_escalated' ? 'text-purple-700 font-medium' :
+                        event.type === 'escalation_exception_created' ? 'text-amber-700 font-medium' :
+                        event.type === 'escalation_exception_revoked' ? 'text-teal-700 font-medium' :
                         'text-slate-600'
                       }`}>
                         {event.content}
@@ -370,6 +452,51 @@ export default function TicketDetail() {
               )}
             </div>
           </div>
+
+          {escalationExceptions.length > 0 && (
+            <div className="card p-6">
+              <h3 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                <Shield className="w-5 h-5 text-slate-400" />
+                催办例外记录
+              </h3>
+              <div className="space-y-3">
+                {escalationExceptions.map((exc) => {
+                  const isExpired = new Date(exc.deadline).getTime() <= Date.now();
+                  const isRevoked = !!exc.revokedAt;
+                  const isActive = !isRevoked && !isExpired;
+                  return (
+                    <div key={exc.id} className={`rounded-lg p-3 text-sm border ${
+                      isActive
+                        ? exc.type === 'delay' ? 'bg-amber-50 border-amber-200' : 'bg-teal-50 border-teal-200'
+                        : 'bg-slate-50 border-slate-200 opacity-70'
+                    }`}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`badge ${getExceptionBadgeClass(exc.type)} text-[10px] py-0.5 px-1.5`}>
+                          {exc.type === 'delay' ? '延后催办' : '免催办'}
+                        </span>
+                        <span className={`text-xs font-medium ${
+                          isActive ? 'text-green-700' : isRevoked ? 'text-slate-500' : 'text-orange-600'
+                        }`}>
+                          {isActive ? '● 生效中' : isRevoked ? '已撤销' : '已过期'}
+                        </span>
+                      </div>
+                      <p className="text-slate-700 mb-1">原因：{exc.reason}</p>
+                      <div className="flex gap-4 text-xs text-slate-500">
+                        <span>截止：{formatDateTime(exc.deadline)}</span>
+                        <span>设置：{formatDateTime(exc.createdAt)}</span>
+                      </div>
+                      {isRevoked && (
+                        <div className="mt-1 text-xs text-slate-500">
+                          <span>撤销时间：{formatDateTime(exc.revokedAt!)}</span>
+                          {exc.revokeReason && <span>，撤销原因：{exc.revokeReason}</span>}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="card p-6">
             <h3 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
@@ -470,6 +597,87 @@ export default function TicketDetail() {
             <button onClick={() => setDeEscalateModalOpen(false)} className="btn-secondary">取消</button>
             <button onClick={handleDeEscalate} disabled={!deEscalateReason.trim()} className="btn-primary bg-rose-600 hover:bg-rose-700">
               <Undo2 className="w-4 h-4" />
+              确认撤销
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={exceptionModalOpen} onClose={() => setExceptionModalOpen(false)} title="设置催办例外">
+        <div className="space-y-4">
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+            <p className="font-medium mb-1">催办例外说明：</p>
+            <ul className="list-disc list-inside space-y-0.5 text-xs">
+              <li><strong>延后催办</strong>：暂时推迟催办，到截止时间后恢复自动催办</li>
+              <li><strong>免催办</strong>：临时免除催办，到截止时间后恢复自动催办</li>
+              <li>设置例外后，系统在例外期间不会自动触发催办</li>
+              <li>如果工单当前处于催办状态，设置例外将自动撤销催办</li>
+              <li>例外到期或被撤销后，系统将重新评估是否触发催办</li>
+            </ul>
+          </div>
+          <div>
+            <label className="label">例外类型 <span className="text-rose-500">*</span></label>
+            <select
+              className="select"
+              value={exceptionType}
+              onChange={(e) => setExceptionType(e.target.value as 'delay' | 'exempt')}
+            >
+              <option value="delay">延后催办（暂时推迟）</option>
+              <option value="exempt">免催办（临时免除）</option>
+            </select>
+          </div>
+          <div>
+            <label className="label">原因 <span className="text-rose-500">*</span></label>
+            <textarea
+              className="input resize-none h-24"
+              placeholder="请填写设置例外的原因，例如：已联系供应商等待确认..."
+              value={exceptionReason}
+              onChange={(e) => setExceptionReason(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="label">截止时间 <span className="text-rose-500">*</span></label>
+            <input
+              type="datetime-local"
+              className="input"
+              value={exceptionDeadline}
+              onChange={(e) => setExceptionDeadline(e.target.value)}
+            />
+            <p className="text-xs text-slate-500 mt-1">截止时间之后，系统将恢复自动催办判断</p>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setExceptionModalOpen(false)} className="btn-secondary">取消</button>
+            <button onClick={handleCreateException} disabled={!exceptionReason.trim() || !exceptionDeadline} className="btn-primary bg-amber-600 hover:bg-amber-700">
+              <Shield className="w-4 h-4" />
+              确认设置
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={revokeExceptionModalOpen} onClose={() => setRevokeExceptionModalOpen(false)} title="撤销催办例外">
+        <div className="space-y-4">
+          <div className="p-3 bg-teal-50 border border-teal-200 rounded-lg text-sm text-teal-800">
+            <p className="font-medium mb-1">撤销例外将产生以下影响：</p>
+            <ul className="list-disc list-inside space-y-0.5 text-xs">
+              <li>立即恢复该工单的自动催办判断</li>
+              <li>如果工单已超时，系统将在下次读取时重新触发催办</li>
+              <li>在时间线中记录撤销操作（含撤销原因）</li>
+            </ul>
+          </div>
+          <div>
+            <label className="label">撤销原因 <span className="text-rose-500">*</span></label>
+            <textarea
+              className="input resize-none h-24"
+              placeholder="请填写撤销例外的原因..."
+              value={revokeExceptionReason}
+              onChange={(e) => setRevokeExceptionReason(e.target.value)}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setRevokeExceptionModalOpen(false)} className="btn-secondary">取消</button>
+            <button onClick={handleRevokeException} disabled={!revokeExceptionReason.trim()} className="btn-primary bg-teal-600 hover:bg-teal-700">
+              <ShieldOff className="w-4 h-4" />
               确认撤销
             </button>
           </div>
